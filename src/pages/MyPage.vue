@@ -154,9 +154,9 @@
           <span>图片管理</span>
         </a-button>
 
-        <a-button class="admin-button" @click="() => handleAdminClick('postManage')">
+        <a-button class="admin-button" @click="() => handleAdminClick('pointManage')">
           <FileTextOutlined class="admin-icon" />
-          <span>帖子管理</span>
+          <span>积分管理</span>
         </a-button>
 
         <a-button class="admin-button" @click="() => handleAdminClick('spaceManage')">

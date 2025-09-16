@@ -375,8 +375,8 @@ const originItems = [
         icon: () => h(PictureOutlined),
       },
       {
-        key: '/admin/postManage',
-        label: '帖子管理',
+        key: '/admin/pointManage',
+        label: '积分管理',
         icon: () => h(FileTextOutlined),
       },
       {

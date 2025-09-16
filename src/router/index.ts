@@ -171,6 +171,15 @@ const router = createRouter({
       },
     },
     {
+      path: '/admin/pointManage',
+      name: '积分管理',
+      component: () => import('@/pages/admin/PointManagePage.vue'),
+      meta: {
+        keepAlive: false,
+        needLogin: true,
+      },
+    },
+    {
       path: '/admin/categoryManage',
       name: '分类管理',
       component: () => import('@/pages/admin/CategoryManagePage.vue'),

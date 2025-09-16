@@ -1,28 +1,6 @@
 <template>
   <div id="homePage">
-    <!--    &lt;!&ndash; PC端搜索区域 &ndash;&gt;-->
-    <!--    <div-->
-    <!--      v-if="device === DEVICE_TYPE_ENUM.PC"-->
-    <!--      class="search-wrapper"-->
-    <!--      :class="{ 'search-fixed': isSearchFixed, 'search-transitioning': isSearchTransitioning }"-->
-    <!--    >-->
-    <!--      <div-->
-    <!--        class="search-bar"-->
-    <!--        :class="{ 'search-bar-transitioning': isSearchTransitioning }"-->
-    <!--        @click="handleSearchClick"-->
-    <!--      >-->
-    <!--        <a-input-search-->
-    <!--          v-model:value="searchParams.searchText"-->
-    <!--          :placeholder="isSearchFixed ? '搜索' : '探索海量精彩图片...'"-->
-    <!--          :enter-button="isSearchFixed ? false : '搜索'"-->
-    <!--        >-->
-    <!--          <template #prefix>-->
-    <!--            <SearchOutlined class="search-icon" />-->
-    <!--          </template>-->
-    <!--        </a-input-search>-->
-    <!--      </div>-->
-    <!--    </div>-->
-
+    
     <!-- 移动端搜索区域 -->
     <div
       v-if="device !== DEVICE_TYPE_ENUM.PC"
@@ -646,7 +624,7 @@ const loadMorePictures = async (nextPage: number) => {
         res = await getFollowPictureUsingPost({
           ...searchParams,
           current: nextPage,
-          pageSize: 20
+          pageSize: searchParams.pageSize
         })
         break
       case 'ranking':
@@ -657,7 +635,7 @@ const loadMorePictures = async (nextPage: number) => {
         res = await listPictureVoByPageUsingPost({
           ...searchParams,
           current: nextPage,
-          pageSize: 20
+          pageSize: searchParams.pageSize
         })
         break
     }

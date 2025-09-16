@@ -30,7 +30,7 @@
               <div class="picture-info">
                 <div class="picture-header">
                   <div class="picture-user" @click.stop="handleUserClick(picture.user)">
-                    <a-avatar class="user-avatar" :src="picture.user?.userAvatar || getDefaultAvatar(picture.user?.userName)"/>
+                    <a-avatar class="user-avatar" :src="picture.user?.userAvatar ?? getDefaultAvatar(picture.user?.userName ?? '')"/>
                     <span>{{ picture.user?.userName }}</span>
                   </div>
                 </div>
@@ -286,6 +286,12 @@ onMounted(async () => {
   nextTick(() => {
     setTimeout(() => {
       document.body.style.overflowY = 'auto'
+      // 初始化 lastScrollTop，避免首次向上滑动误触发加载
+      try {
+        lastScrollTop = window.pageYOffset || document.documentElement.scrollTop || 0
+      } catch (e) {
+        lastScrollTop = 0
+      }
       window.addEventListener('scroll', handleWindowScroll)
     }, 500)  // 给予足够的时间让图片加载和布局稳定
   })
@@ -510,16 +516,26 @@ const isLoading = ref(false)
 const SCROLL_THRESHOLD = 2000  // 更早开始预加载
 const THROTTLE_TIME = 500  // 减少节流时间，使滚动更平滑
 
+// 记录上一次滚动位置，用于判断滚动方向（只在向下滚动时触发加载）
+let lastScrollTop = 0
+
 // 处理滚动事件
 const handleWindowScroll = throttle(() => {
   if (isLoading.value || isEndOfData.value || !props.onLoadMore) return
 
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop || 0
   const windowHeight = window.innerHeight
   const documentHeight = document.documentElement.scrollHeight
 
+  // 仅在向下滚动（接近页面底部）时触发加载，避免向上或回弹触发
+  if (scrollTop <= lastScrollTop) {
+    lastScrollTop = scrollTop
+    return
+  }
+
   // 提前更多距离开始加载下一页
   if (documentHeight - scrollTop - windowHeight < SCROLL_THRESHOLD) {
+    lastScrollTop = scrollTop
     loadMore()
   }
 }, THROTTLE_TIME, { leading: true, trailing: true })
@@ -900,15 +916,7 @@ const loadMore = async () => {
   }
 }
 
-// 监听滚动事件
-onMounted(() => {
-  window.addEventListener('scroll', handleWindowScroll)
-})
-
-// 组件卸载时移除滚动监听
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleWindowScroll)
-})
+// 滚动监听在顶部的 onMounted 中已统一注册/移除，避免重复绑定
 
 // 监听数据列表变化，重置状态
 watch(() => props.dataList, (newVal, oldVal) => {
@@ -948,9 +956,12 @@ const getColumnCount = () => {
   return 3
 }
 
+// 使用响应式列数来驱动列数据的重新计算（便于 resize 时更新）
+const columnCountRef = ref(getColumnCount())
+
 // 计算分列数据
 const columns = computed(() => {
-  const columnCount = getColumnCount()
+  const columnCount = columnCountRef.value
   const cols: API.PictureVO[][] = Array.from({ length: columnCount }, () => [])
 
   // 按照从左到右、从上到下的顺序分配数据
@@ -972,18 +983,8 @@ onUnmounted(() => {
 })
 
 const handleResize = throttle(() => {
-  // 触发重新计算列
-  columns.value = computed(() => {
-    const columnCount = getColumnCount()
-    const cols: API.PictureVO[][] = Array.from({ length: columnCount }, () => [])
-
-    props.dataList.forEach((item, index) => {
-      const columnIndex = index % columnCount
-      cols[columnIndex].push(item)
-    })
-
-    return cols
-  }).value
+  // 更新列数，computed 会根据 columnCountRef 重新计算 columns
+  columnCountRef.value = getColumnCount()
 }, 200)
 
 // 监听登录用户变化，首次登录后自动加载图片数据
