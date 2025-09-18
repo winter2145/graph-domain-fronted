@@ -1,9 +1,9 @@
-import { createApp } from 'vue'
+import { createApp, h, nextTick } from 'vue'
 import { createPinia } from 'pinia'
 import { handleBackButton } from '@/utils/back.ts'
 import App from './App.vue'
 import router from './router'
-import Antd from 'ant-design-vue'
+import Antd, { message } from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import '@/access.ts'
 import VueCropper from 'vue-cropper'
@@ -13,6 +13,7 @@ import "vue3-emoji-picker/css";
 import { addUserSignInUsingPost } from '@/api/userController'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
 import { watch } from 'vue'
+import { CloseOutlined } from '@ant-design/icons-vue'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -71,8 +72,7 @@ watch(
 
 // 挂载应用
 app.mount('#app')
-// 使用nextTick确保在DOM更新后（也就是应用挂载完成后）执行后续逻辑
-import { nextTick } from 'vue'
+// 使用 nextTick 确保在 DOM 更新后（也就是应用挂载完成后）执行后续逻辑
 nextTick(() => {
   handleBackButton()
     .then(() => {
@@ -81,4 +81,33 @@ nextTick(() => {
     .catch((error) => {
       console.error('处理返回键时出现错误:', error)
     })
+  // 覆盖全局 message.error 为可点击任意处关闭且包含 Close 图标的样式
+  const originalError = message.error
+  message.error = ((content: any, duration?: number, onClose?: any) => {
+    const key = `global-err-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const node = h(
+      'div',
+      { style: { display: 'flex', alignItems: 'center', gap: '8px', color: '#1a1a1a' } },
+      [
+        h(CloseOutlined, { style: { color: '#ff4d4f', fontSize: '18px' } }),
+        typeof content === 'string' ? content : String(content),
+      ],
+    )
+
+    message.open({ content: node, key, duration: 0 })
+
+    const onDocClick = () => {
+      message.destroy(key)
+      document.removeEventListener('click', onDocClick, true)
+    }
+
+    document.addEventListener('click', onDocClick, true)
+
+    // 调用原始实现以满足返回类型和兼容性（但仍以自定义节点显示）
+    try {
+      return originalError(content, duration, onClose) as any
+    } catch (e) {
+      return originalError(content) as any
+    }
+  }) as any
 })

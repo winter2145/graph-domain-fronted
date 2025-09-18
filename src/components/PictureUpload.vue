@@ -28,9 +28,10 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount, h } from 'vue'
 import { CloudUploadOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
+import { CloseOutlined } from '@ant-design/icons-vue'
 import { uploadPictureUsingPost } from '@/api/pictureController'
 
 interface Props {
@@ -44,6 +45,41 @@ interface Props {
 const props = defineProps<Props>()
 const fileInput = ref<HTMLInputElement | null>(null)
 const previewUrl = ref<string>('')
+
+// 用于清理全局点击监听器的集合
+const _cleanupFns: Array<() => void> = []
+
+// 显示一个不可自动关闭的 error message，包含红色图标，用户点击界面任意处会关闭
+const showClosableMessage = (text: string) => {
+  const key = `pic-msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+
+  const contentNode = h(
+    'div',
+    { style: { display: 'flex', alignItems: 'center', gap: '10px', color: '#1a1a1a' } },
+    [
+      h(CloseOutlined, { style: { color: '#ff4d4f', fontSize: '18px' } }),
+      h('div', { style: { fontSize: '14px' } }, text),
+    ],
+  )
+
+  message.open({ content: contentNode, key, duration: 0 })
+
+  const onDocClick = () => {
+    message.destroy(key)
+    document.removeEventListener('click', onDocClick, true)
+  }
+
+  document.addEventListener('click', onDocClick, true)
+  _cleanupFns.push(() => {
+    document.removeEventListener('click', onDocClick, true)
+    message.destroy(key)
+  })
+}
+
+onBeforeUnmount(() => {
+  _cleanupFns.forEach((fn) => fn())
+  _cleanupFns.length = 0
+})
 
 // 检测是否为移动设备
 const isMobile = ref(false)
@@ -99,13 +135,13 @@ const handleFileChange = (e: Event) => {
 const handleUpload = async (file: File) => {
   // 检查文件类型
   if (!file.type.startsWith('image/')) {
-    message.error('请选择图片文件')
+    showClosableMessage('请选择图片文件')
     return
   }
 
   // 检查文件大小（例如限制为5MB）
   if (file.size > 5 * 1024 * 1024) {
-    message.error('图片大小不能超过5MB')
+    showClosableMessage('图片大小不能超过5MB')
     return
   }
 
@@ -129,7 +165,7 @@ const handleUpload = async (file: File) => {
       {},
       file,
       {
-        onUploadProgress: (progressEvent) => {
+        onUploadProgress: (progressEvent: ProgressEvent) => {
           const progress = Math.round(
             (progressEvent.loaded * 100) / (progressEvent.total ?? 100)
           )
@@ -138,15 +174,17 @@ const handleUpload = async (file: File) => {
       }
     )
 
-    if (res.data.code === 0 && res.data.data) {
-      // message.success('图片上传成功')
-      props.onSuccess?.(res.data.data)
-    } else {
-      message.error('图片上传失败：' + (res.data?.message || '请检查图片格式和大小'))
-    }
+        const resp = res as any
+
+        if (resp.data.code === 0 && resp.data.data) {
+          // message.success('图片上传成功')
+          props.onSuccess?.(resp.data.data)
+        } else {
+          showClosableMessage('图片上传失败：' + (resp.data?.message || '请检查图片格式和大小'))
+        }
   } catch (error: any) {
     console.error('图片上传异常：', error)
-    message.error('上传失败：' + (error.response?.data?.message || '请稍后重试'))
+  showClosableMessage('上传失败：' + (error.response?.data?.message || '请稍后重试'))
   } finally {
     // 清空文件输入框，允许重复上传同一文件
     if (fileInput.value) {

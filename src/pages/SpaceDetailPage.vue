@@ -329,13 +329,11 @@ const fetchSpaceDetail = async () => {
           router.replace(`/space/${firstSpace.id}`)
           space.value = firstSpace
         } else {
-          // 如果用户没有空间，跳转到创建空间页面
-          // message.info('您还没有空间，即将为您创建')
           router.replace('/add_space')
           return
         }
       } else {
-        // message.error('获取空间列表失败：' + res.data.message)
+
         return
       }
     } else {
