@@ -4,6 +4,9 @@
     <div class="main-content">
       <!-- 空间信息 -->
       <div v-if="spaceId" class="space-info">
+        <a-button class="back-btn" type="link" @click="goBack">
+          <template #icon><LeftOutlined /></template>
+        </a-button>
         保存至空间：<a :href="`/space/${spaceId}`">{{ spaceId }}</a>
       </div>
 
@@ -140,7 +143,7 @@ import {
 } from '@/api/pictureController.ts'
 import { useRoute, useRouter } from 'vue-router'
 import UrlPictureUpload from '@/components/UrlPictureUpload.vue'
-import { EditOutlined, FullscreenOutlined } from '@ant-design/icons-vue'
+import { EditOutlined, FullscreenOutlined, LeftOutlined } from '@ant-design/icons-vue'
 import ImageCropper from '@/components/ImageCropper.vue'
 import ImageOutPainting from '@/components/ImageOutPainting.vue'
 import { SPACE_LEVEL_ENUM } from '@/constants/space'
@@ -312,6 +315,14 @@ onMounted(() => {
 })
 
 const route = useRoute()
+const goBack = () => {
+  const sid = route.query?.spaceId
+  if (sid) {
+    router.push({ path: `/space/${sid}` })
+  } else {
+    router.back()
+  }
+}
 
 // 获取老数据
 const getOldPicture = async () => {
@@ -508,6 +519,16 @@ const onImageOutPaintingSuccess = (newPicture: API.PictureVO) => {
 .submit-button:active {
   transform: translateY(1px);
 }
+
+.back-btn {
+  padding: 4px 8px;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+.back-btn:hover { color: #ff8e53 }
 
 /* 响应式调整 */
 @media screen and (max-width: 768px) {

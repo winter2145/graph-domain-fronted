@@ -4,7 +4,12 @@
     <template v-if="device === DEVICE_TYPE_ENUM.PC">
       <!-- 标题区域 -->
       <a-flex justify="space-between" class="header-section">
-        <h2 class="page-title">空间成员管理</h2>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <a-button class="back-btn" type="link" @click="goBack">
+            <template #icon><LeftOutlined /></template>
+          </a-button>
+          <h2 class="page-title">空间成员管理</h2>
+        </div>
       </a-flex>
 
       <!-- 成员状态标签 -->
@@ -77,7 +82,7 @@
           <template v-if="column.dataIndex === 'userInfo'">
             <a-space>
               <a-avatar
-                :src="record.user?.userAvatar"
+                :src="record.user?.userAvatar ?? getDefaultAvatar(record.user?.userName ?? '')"
                 class="clickable-avatar"
                 @click="goToUserPage(record.user?.id)"
               />
@@ -175,7 +180,7 @@
           <template #title>
             <div class="member-info">
               <van-image
-                :src="member.user?.userAvatar"
+                :src="member.user?.userAvatar ?? getDefaultAvatar(member.user?.userName ?? '')"
                 round
                 width="40"
                 height="40"
@@ -276,13 +281,28 @@ import {
   auditSpaceUserUsingPost,
 } from '@/api/spaceUserController.ts'
 import dayjs from 'dayjs'
-import { UserAddOutlined, ExclamationCircleFilled } from '@ant-design/icons-vue'
+import { UserAddOutlined, ExclamationCircleFilled, LeftOutlined } from '@ant-design/icons-vue'
 import { getDeviceType } from '@/utils/device.ts'
 import { DEVICE_TYPE_ENUM } from '@/constants/device.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+
+const goBack = () => {
+  const sid = props.id
+  if (sid) {
+    router.push({ path: `/space/${sid}` })
+  } else {
+    router.back()
+  }
+}
+
+// 获取默认头像
+const getDefaultAvatar = (userName: string) => {
+  const defaultName = userName || 'Guest'
+  return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(defaultName)}&backgroundColor=ffd5dc,ffdfbf,ffd5dc`
+}
 
 // 添加设备类型状态
 const device = ref<string>('')
@@ -486,6 +506,16 @@ const goToUserPage = (userId?: number) => {
 .header-section {
   margin-bottom: 24px;
 }
+
+.back-btn {
+  padding: 4px 8px;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+.back-btn:hover { color: #ff8e53 }
 
 .page-title {
   color: #1a1a1a;

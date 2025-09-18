@@ -1,6 +1,9 @@
 <template>
   <div id="addSpacePage">
     <h2 class="page-title">
+      <a-button class="back-btn" type="link" @click="goBack">
+        <template #icon><LeftOutlined /></template>
+      </a-button>
       {{ route.query?.id ? '修改' : '创建' }} {{ SPACE_TYPE_MAP[spaceType] }}
     </h2>
     <!-- 空间信息表单 -->
@@ -67,7 +70,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { SPACE_LEVEL_OPTIONS, SPACE_LEVEL_ENUM, SPACE_TYPE_ENUM, SPACE_TYPE_MAP } from '@/constants/space.ts'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
 import { formatSize } from '../utils'
-import { SaveOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
+import { SaveOutlined, InfoCircleOutlined, LeftOutlined } from '@ant-design/icons-vue'
 
 const loginUserStore = useLoginUserStore()
 const isAdmin = computed(() => loginUserStore.loginUser?.userRole === 'admin')
@@ -148,6 +151,18 @@ const handleSubmit = async (values: any) => {
 
 const route = useRoute()
 
+const goBack = () => {
+  try {
+    if (window && window.history && window.history.length > 1) {
+      router.back()
+    } else {
+      router.push({ path: '/' })
+    }
+  } catch (e) {
+    router.back()
+  }
+}
+
 // 获取老数据
 const getOldSpace = async () => {
   // 获取到 id
@@ -191,6 +206,16 @@ onMounted(() => {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+.back-btn {
+  padding: 4px 8px;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+.back-btn:hover { color: #ff8e53 }
 
 .space-form {
   :deep(.ant-form-item) {

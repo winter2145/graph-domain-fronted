@@ -12,6 +12,7 @@ import 'vue-cropper/dist/index.css'
 import "vue3-emoji-picker/css";
 import { addUserSignInUsingPost } from '@/api/userController'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
+import { watch } from 'vue'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -24,27 +25,49 @@ window.addEventListener('unhandledrejection', event => {
   console.error('Unhandled Promise Rejection:', event.reason)
 })
 
-// 自动签到函数
-const autoSignIn = async () => {
-  const loginUserStore = useLoginUserStore()
-  // 确保用户已登录
-  if (loginUserStore.loginUser?.id) {
-    try {
-      await addUserSignInUsingPost()
-    } catch (error) {
-      console.error('自动签到失败:', error)
-    }
+// 自动签到：只在用户首次登录时触发一次
+const loginUserStore = useLoginUserStore()
+
+// helper: check and set per-user signed flag in localStorage
+function hasSignedForUser(userId: any) {
+  if (!userId) return false
+  try {
+    return !!localStorage.getItem(`signedInForUser:${userId}`)
+  } catch (e) {
+    return false
+  }
+}
+function markSignedForUser(userId: any) {
+  if (!userId) return
+  try {
+    localStorage.setItem(`signedInForUser:${userId}`, '1')
+  } catch (e) {
+    // ignore
   }
 }
 
-// 在应用启动时执行自动签到
-router.isReady().then(() => {
-  autoSignIn()
-})
+async function trySignInForUser(userId: any) {
+  if (!userId) return
+  if (hasSignedForUser(userId)) return
+  try {
+    const res = await addUserSignInUsingPost()
+    if (res?.data?.code === 0) {
+      markSignedForUser(userId)
+    }
+  } catch (e) {
+    console.error('自动签到失败:', e)
+  }
+}
 
-router.isReady().then(() => {
-  autoSignIn()
-})
+// 监听 loginUser 变化：当用户从未登录变为已登录时尝试签到（仅一次）
+watch(
+  () => loginUserStore.loginUser && loginUserStore.loginUser.id,
+  (id, oldId) => {
+    if (id && id !== oldId) {
+      trySignInForUser(id)
+    }
+  }
+)
 
 // 挂载应用
 app.mount('#app')

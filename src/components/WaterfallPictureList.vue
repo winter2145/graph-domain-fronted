@@ -21,7 +21,7 @@
                   <img
                     :alt="picture.name"
                     class="masonry-image"
-                    :src="picture.thumbnailUrl || picture.url"
+                    :src="picture.thumbnailUrl || picture.webpUrl"
                     @load="handleImageLoad"
                     @error="(e) => handleImageError(picture, e)"
                   />
@@ -243,6 +243,7 @@ import { doShareUsingPost } from '@/api/shareRecordController.ts'
 import { canShare, incrementShareCount, getRemainingShares } from '@/utils/shareLimit.ts'
 import { formatNumber, normalizeNumber, cacheViewCount } from '@/utils/viewCountUtils'
 import { generateRedirectUrl } from '@/utils/redirectUtils'
+import { navigateToUserDetail } from '@/utils/navigation'
 
 // 添加定时刷新浏览量的机制
 const REFRESH_INTERVAL = 30000 // 30秒刷新一次
@@ -870,21 +871,10 @@ const emojiI18n = {
 // 判断是否为移动端
 const isMobile = ref(getDeviceType() === DEVICE_TYPE_ENUM.MOBILE)
 
-// 处理用户点击
 const handleUserClick = (user: any) => {
-  if (!user) return
-  router.push({
-    path: `/user/${user.id}`,
-    query: {
-      userName: user.userName,
-      userAvatar: user.userAvatar,
-      userAccount: user.userAccount,
-      userProfile: user.userProfile,
-      userRole: user.userRole,
-      createTime: user.createTime
-    }
-  })
+  navigateToUserDetail(user)
 }
+
 
 // 滚动加载相关变量
 const currentPage = ref(1)

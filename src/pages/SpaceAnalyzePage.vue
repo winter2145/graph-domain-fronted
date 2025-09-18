@@ -3,6 +3,9 @@
     <!-- 头部导航 -->
     <div class="page-header">
       <div class="header-title">
+        <a-button class="back-btn" type="link" @click="goBack">
+          <template #icon><LeftOutlined /></template>
+        </a-button>
         <a-button type="link" class="title-text">图库分析</a-button>
         <span class="divider">-</span>
         <span class="space-name" v-if="queryAll">全部空间</span>
@@ -69,8 +72,9 @@ import SpaceTagAnalyze from '@/components/analyze/SpaceTagAnalyze.vue'
 import SpaceSizeAnalyze from '@/components/analyze/SpaceSizeAnalyze.vue'
 import SpaceUserAnalyze from '@/components/analyze/SpaceUserAnalyze.vue'
 import SpaceRankAnalyze from '@/components/analyze/SpaceRankAnalyze.vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue'
+import { LeftOutlined } from '@ant-design/icons-vue'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 
 const route = useRoute()
@@ -96,6 +100,16 @@ const loginUser = loginUserStore.loginUser
 const isAdmin = computed(() => {
   return loginUser.userRole === 'admin'
 })
+
+const router = useRouter()
+const goBack = () => {
+  const sid = route.query?.spaceId
+  if (sid) {
+    router.push({ path: `/space/${sid}` })
+  } else {
+    router.back()
+  }
+}
 </script>
 
 <style scoped>
@@ -147,6 +161,16 @@ const isAdmin = computed(() => {
     }
   }
 }
+
+.back-btn {
+  padding: 4px 8px;
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+.back-btn:hover { color: #ff8e53 }
 
 .analysis-grid {
   margin: 0 -8px;

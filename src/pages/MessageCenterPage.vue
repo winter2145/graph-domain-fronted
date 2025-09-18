@@ -3,7 +3,11 @@
     <!-- 页面标题和统计 -->
     <div class="message-header">
       <div class="header-left">
-        <h2>消息中心</h2>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <LeftOutlined class="back-btn" @click="goBack" />
+          <h2>消息中心</h2>
+        </div>
+
         <div class="total-unread" :class="{ 'has-unread': messageData.totalUnread > 0 }">
           共 <span class="highlight">{{ messageData.totalUnread || 0 }}</span> 条未读消息
         </div>
@@ -116,7 +120,7 @@ import { getUnreadCountUsingGet, markAllAsReadUsingPost } from '@/api/messageCen
 import { getUnreadCommentsUsingGet } from '@/api/commentsController'
 import { getUnreadLikesUsingGet } from '@/api/likeRecordController'
 import { getUnreadSharesUsingGet } from '@/api/shareRecordController'
-import { CommentOutlined, LikeOutlined, ShareAltOutlined, HistoryOutlined } from '@ant-design/icons-vue'
+import { CommentOutlined, LikeOutlined, ShareAltOutlined, LeftOutlined, HistoryOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import UnreadCommentList from '@/components/UnreadCommentList.vue'
 import UnreadLikeList from '@/components/UnreadLikeList.vue'
@@ -141,6 +145,10 @@ const unreadShares = ref([])
 const markingRead = ref(false)
 
 const router = useRouter()
+
+const goBack = () => {
+    router.back()
+}
 
 // 获取消息数据
 const fetchMessageData = async () => {
@@ -249,6 +257,17 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+
+.back-btn {
+  padding: 4px 8px;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+.back-btn:hover { color: #ff8e53 }
+
 /* PC端特定样式 */
 .pc-message-center {
   max-width: 1000px !important;
@@ -513,8 +532,11 @@ onMounted(async () => {
 
   .header-right {
     display: flex;
+    flex-direction: column;
     gap: 8px;
-    align-items: center;
+    align-items: flex-end;
+    justify-content: center;
+    min-width: 88px;
   }
 
   .history-btn {
@@ -526,6 +548,8 @@ onMounted(async () => {
     align-items: center;
     gap: 4px;
     white-space: nowrap;
+    width: 100%;
+    justify-content: center;
 
     :deep(.anticon) {
       font-size: 14px;
@@ -538,6 +562,8 @@ onMounted(async () => {
     padding: 0 10px;
     border-radius: 14px;
     white-space: nowrap;
+    width: 100%;
+    justify-content: center;
   }
 
   .stats-cards {

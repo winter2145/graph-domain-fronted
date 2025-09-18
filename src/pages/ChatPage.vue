@@ -53,8 +53,7 @@ import { ref, onMounted as vueOnMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   CloseOutlined,
-  LeftOutlined,
-  HistoryOutlined
+  LeftOutlined
 } from '@ant-design/icons-vue'
 import PictureChatRoom from '@/components/PictureChatRoom.vue'
 import { getDefaultAvatar } from '@/utils/userUtils'

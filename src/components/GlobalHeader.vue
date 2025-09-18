@@ -75,12 +75,6 @@
                         我的发布
                       </router-link>
                     </a-menu-item>
-                    <a-menu-item key="contact">
-                      <a href="http://my.lumenglover.com/contact" target="_blank">
-                        <LinkOutlined/>
-                        联系我们
-                      </a>
-                    </a-menu-item>
                     <a-menu-item @click="showLogoutConfirm">
                       <LogoutOutlined />
                       退出登录

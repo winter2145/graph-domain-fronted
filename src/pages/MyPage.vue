@@ -19,7 +19,7 @@
         <div class="glass-effect">
           <div class="avatar-and-text" @click="handleAvatarClick">
             <div class="avatar-container">
-              <a-avatar class="user-avatar" :src="loginUserStore.loginUser.userAvatar || getDefaultAvatar(loginUserStore.loginUser.userName)" :size="72" />
+              <a-avatar class="user-avatar" :src="loginUserStore.loginUser.userAvatar ?? getDefaultAvatar(loginUserStore.loginUser.userName)" :size="72" />
               <div class="avatar-border"></div>
             </div>
             <div class="text-info-container">
@@ -92,16 +92,6 @@
           </span>
           <RightOutlined class="arrow-icon" />
         </a-button>
-
-        <a-button class="custom-button" @click="handleClick">
-          <span class="button-content">
-            <LinkOutlined class="button-icon contact-icon" />
-            <span class="button-text">联系我们</span>
-          </span>
-          <RightOutlined class="arrow-icon" />
-        </a-button>
-
-
 
         <a-button class="custom-button logout-button" @click="handleLogoutClick">
           <span class="button-content">
@@ -374,8 +364,8 @@ const handleAvatarClick = () => {
   }
 }
 
-// 获取默认头像
-const getDefaultAvatar = (userName: string) => {
+// 获取默认头像，允许 userName 为 undefined
+const getDefaultAvatar = (userName?: string) => {
   const defaultName = userName || 'Guest'
   return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(defaultName)}&backgroundColor=ffd5dc,ffdfbf,ffd5dc`
 }

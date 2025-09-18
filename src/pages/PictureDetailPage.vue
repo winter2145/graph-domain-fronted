@@ -21,7 +21,7 @@
             <template #title> </template>
             <div class="image-container" :class="{ loaded: pictureLoaded }">
               <template v-if="pictureLoaded">
-                <a-image :src="picture.url" class="main-image" />
+                <a-image :src="picture.webpUrl" class="main-image" />
               </template>
               <template v-else>
                 <div class="loading-container">
@@ -519,7 +519,7 @@ const confirmDelete = async () => {
   }
 }
 
-// 下载图片
+// 下载原图图片
 const doDownload = () => {
   downloadImage(picture.value.url)
 }
@@ -535,7 +535,7 @@ const shareImage = ref('')
 const doShare = () => {
   shareLink.value = `${window.location.protocol}//${window.location.host}/picture/${picture.value.id}`
   // 设置分享图片，优先使用缩略图
-  shareImage.value = picture.value.thumbnailUrl || picture.value.url
+  shareImage.value = picture.value.thumbnailUrl || picture.value.webpUrl
   if (shareModalRef.value) {
     shareModalRef.value.openModal()
   }
