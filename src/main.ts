@@ -94,20 +94,27 @@ nextTick(() => {
       ],
     )
 
+    // 只使用 message.open 显示自定义节点（不再调用 originalError，避免重复弹窗）
     message.open({ content: node, key, duration: 0 })
 
+    const close = () => {
+      try {
+        message.destroy(key)
+      } finally {
+        if (typeof onClose === 'function') {
+          try { onClose() } catch (e) { /* ignore */ }
+        }
+      }
+    }
+
     const onDocClick = () => {
-      message.destroy(key)
+      close()
       document.removeEventListener('click', onDocClick, true)
     }
 
     document.addEventListener('click', onDocClick, true)
 
-    // 调用原始实现以满足返回类型和兼容性（但仍以自定义节点显示）
-    try {
-      return originalError(content, duration, onClose) as any
-    } catch (e) {
-      return originalError(content) as any
-    }
+    // 返回一个兼容的对象/关闭句柄，调用方通常不会使用但保持一定兼容性
+    return { key, close } as any
   }) as any
 })
