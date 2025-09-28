@@ -75,12 +75,6 @@
                         我的发布
                       </router-link>
                     </a-menu-item>
-                    <a-menu-item key="contact">
-                      <a href="http://my.lumenglover.com/contact" target="_blank">
-                        <LinkOutlined/>
-                        联系我们
-                      </a>
-                    </a-menu-item>
                     <a-menu-item @click="showLogoutConfirm">
                       <LogoutOutlined />
                       退出登录
@@ -90,7 +84,7 @@
               </a-dropdown>
             </div>
             <div v-else>
-              <a-button type="primary" href="/user/login" class="login-button">
+              <a-button type="primary" class="login-button" @click="gotoLogin">
                 <span class="button-content">
                   <UserOutlined />
                   <span>登录</span>
@@ -169,7 +163,7 @@ import UploadActionSheet from './UploadActionSheet.vue'
 import { generateRedirectUrl } from '@/utils/redirectUtils'
 
 // 获取默认头像
-const getDefaultAvatar = (userName: string) => {
+const getDefaultAvatar = (userName?: string) => {
   const defaultName = userName || 'Guest'
   return `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(defaultName)}&backgroundColor=ffd5dc,ffdfbf,ffd5dc`
 }
@@ -263,6 +257,12 @@ const handleAddClick = () => {
   }
   previousRoute.value = route.fullPath
   showActionSheet.value = true
+}
+
+// 导航到登录页（SPA 跳转，避免整页刷新）
+const gotoLogin = () => {
+  const redirectUrl = generateRedirectUrl(window.location.origin + route.fullPath)
+  router.push(redirectUrl)
 }
 
 // 监听 ActionSheet 的显示状态
@@ -375,8 +375,8 @@ const originItems = [
         icon: () => h(PictureOutlined),
       },
       {
-        key: '/admin/postManage',
-        label: '帖子管理',
+        key: '/admin/pointManage',
+        label: '积分管理',
         icon: () => h(FileTextOutlined),
       },
       {

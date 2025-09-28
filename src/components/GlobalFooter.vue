@@ -15,7 +15,7 @@
     </div>
 
     <van-tabbar v-else v-model="active" class="mobile-tabbar" :safe-area-inset-bottom="true">
-      <van-tabbar-item @click="() => handleNav('/')">
+      <van-tabbar-item @click="handleNav('/')">
         <template #icon="props">
           <div id="footerHomeIcon" class="custom-icon">
             <van-icon name="wap-home" :class="{ 'icon-active': props.active }" />
@@ -24,7 +24,7 @@
   <span :class="['tab-text', { 'text-active-home': active === 0 }]">首页</span>
       </van-tabbar-item>
 
-  <van-tabbar-item @click="() => handleNav('/forum')">
+  <van-tabbar-item @click="handleNav('/forum')">
         <template #icon="props">
           <div id="footerForumIcon" class="custom-icon">
             <van-icon name="friends" :class="{ 'icon-active-forum': props.active }" />
@@ -33,7 +33,7 @@
         <span :class="['tab-text', { 'text-active-forum': active === 1 }]">AI</span>
       </van-tabbar-item>
 
-      <van-tabbar-item @click="handleAddClick">
+  <van-tabbar-item @click="handleAddClick">
         <template #icon>
           <div id="footerAddButton" class="add-button">
             <van-icon name="plus" />
@@ -41,7 +41,7 @@
         </template>
       </van-tabbar-item>
 
-  <van-tabbar-item @click="() => handleNav('/chat-list')">
+  <van-tabbar-item @click="handleNav('/chat-list')">
         <template #icon="props">
           <div id="footerChatIcon" class="custom-icon">
             <van-icon name="chat" :class="{ 'icon-active-chat': props.active }" />
@@ -50,7 +50,7 @@
         <span :class="['tab-text', { 'text-active-chat': active === 3 }]">聊天</span>
       </van-tabbar-item>
 
-  <van-tabbar-item @click="() => handleNav('/my')">
+  <van-tabbar-item @click="handleNav('/my')">
         <template #icon="props">
           <div id="footerMyIcon" class="custom-icon">
             <van-icon name="manager" :class="{ 'icon-active-my': props.active }" />
@@ -84,6 +84,11 @@ const active = ref(0)
 const showActionSheet = ref(false)
 const loginUserStore = useLoginUserStore()
 
+// 提取为外部函数，便于添加/移除 resize 监听器
+const updateDevice = async () => {
+  device.value = await getDeviceType()
+}
+
 // 处理添加按钮点击
 const handleAddClick = () => {
   if (!loginUserStore.loginUser.id) {
@@ -95,7 +100,9 @@ const handleAddClick = () => {
 
 // 页面加载时获取设备类型并获取数据，同时设置初始高亮项
 onMounted(async () => {
-  device.value = await getDeviceType()
+  // 初始化设备类型并监听窗口变化
+  await updateDevice()
+  window.addEventListener('resize', updateDevice)
   const currentRoute = router.currentRoute.value
   const currentPath = currentRoute.path
   if (currentPath === '/') {
@@ -104,12 +111,22 @@ onMounted(async () => {
     active.value = 1
   } else if (currentPath === '/my') {
     active.value = 4
+  } else if (currentPath === '/forum') {
+    active.value = 1
+  } else if (currentPath === '/chat-list') {
+    active.value = 3
   }
 })
 
 // 组件卸载前关闭 action sheet
 onBeforeUnmount(() => {
   showActionSheet.value = false
+  // 移除 resize 监听器
+  try {
+    window.removeEventListener('resize', updateDevice)
+  } catch (e) {
+    // ignore
+  }
 })
 
 // 监听路由变化，更新高亮菜单项对应的active值

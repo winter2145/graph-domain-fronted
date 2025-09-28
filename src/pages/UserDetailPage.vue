@@ -4,6 +4,9 @@
       <!-- 用户信息卡片 -->
       <div class="user-card">
         <div class="user-info">
+          <a-button class="back-btn" type="link" @click="goBack">
+            <template #icon><LeftOutlined /></template>
+          </a-button>
           <van-image
             :src="userInfo.userAvatar || getDefaultAvatar(userInfo.userName)"
             round
@@ -105,7 +108,7 @@
             </div>
           </div>
         </div>
-  <!-- 帖子相关已移除 -->
+
       </div>
     </div>
   </div>
@@ -114,6 +117,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { LeftOutlined } from '@ant-design/icons-vue'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
 import dayjs from 'dayjs'
 import { getDefaultAvatar } from '@/utils/userUtils'
@@ -126,6 +130,7 @@ import { getDeviceType } from '@/utils/device.ts'
 import { DEVICE_TYPE_ENUM } from '@/constants/device.ts'
 import MobilePictureList from '@/components/MobilePictureList.vue'
 import { MessageOutlined } from '@ant-design/icons-vue'
+import { getUserVoByIdUsingGet } from '@/api/userController'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,9 +138,34 @@ const loginUserStore = useLoginUserStore()
 const device = ref<string>('')
 const pictureTotal = ref(0)
 
+const goBack = () => {
+  const fromPath = sessionStorage.getItem('fromPath')
+  if (fromPath) {
+    router.push(fromPath)
+    sessionStorage.removeItem('fromPath') // 用完就删，避免脏数据
+  } else {
+    router.push('/')
+  }
+}
+
 // 页面加载时获取设备类型并获取数据
 onMounted(async () => {
+  // 获取设备类型
   device.value = await getDeviceType()
+
+    // 如果路由带的数据不全，就调接口
+  if (!userInfo.value.userAccount) {
+    try {
+      const res = await getUserVoByIdUsingGet({ id: userInfo.value.id })
+      if (res.data?.code === 0 && res.data.data) {
+        userInfo.value = res.data.data
+      }
+    } catch (e) {
+      console.error('获取用户信息失败', e)
+    }
+  }
+
+  // 其他异步操作并行执行
   await Promise.all([
     getFollowAndFansCount(),
     checkIsFollowing(),
@@ -143,22 +173,26 @@ onMounted(async () => {
   ])
 })
 
+
 // 处理页码变化
 const handlePageChange = (page: number) => {
   currentPage.value = page
   loadPictureData()
 }
 
-// 初始化用户信息
+// 1. 初始值来自路由参数和 state
+const initialUserState = route.state || route.query || {}
+
 const userInfo = ref<API.UserVO>({
   id: route.params.id || 0,
-  userName: String(route.query.userName || ''),
-  userAvatar: String(route.query.userAvatar || ''),
-  userAccount: String(route.query.userAccount || ''),
-  userProfile: String(route.query.userProfile || ''),
-  userRole: String(route.query.userRole || ''),
-  createTime: String(route.query.createTime || '')
+  userName: String(initialUserState.userName || ''),
+  userAvatar: String(initialUserState.userAvatar || ''),
+  userAccount: String(initialUserState.userAccount || ''),
+  userProfile: String(initialUserState.userProfile || ''),
+  userRole: String(initialUserState.userRole || ''),
+  createTime: String(initialUserState.createTime || '')
 })
+
 
 const followCount = ref(0)
 const fansCount = ref(0)
@@ -335,7 +369,6 @@ const loadMorePictures = async (nextPage: number) => {
   }
 }
 
-// 帖子相关逻辑已移除
 
 // 监听路由参数变化，重新获取数据
 watch(() => route.params.id, async (newId) => {
@@ -407,6 +440,16 @@ const startPrivateChat = async () => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   background: linear-gradient(to bottom, #fff6f3 0%, white 100%);
 }
+
+.back-btn {
+  padding: 4px 8px;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+.back-btn:hover { color: #ff8e53 }
 
 .pagination-wrapper {
   margin-top: 24px;

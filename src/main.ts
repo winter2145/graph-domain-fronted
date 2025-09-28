@@ -1,9 +1,9 @@
-import { createApp } from 'vue'
+import { createApp, h, nextTick } from 'vue'
 import { createPinia } from 'pinia'
 import { handleBackButton } from '@/utils/back.ts'
 import App from './App.vue'
 import router from './router'
-import Antd from 'ant-design-vue'
+import Antd, { message } from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import '@/access.ts'
 import VueCropper from 'vue-cropper'
@@ -12,6 +12,8 @@ import 'vue-cropper/dist/index.css'
 import "vue3-emoji-picker/css";
 import { addUserSignInUsingPost } from '@/api/userController'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
+import { watch } from 'vue'
+import { CloseOutlined } from '@ant-design/icons-vue'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -24,32 +26,53 @@ window.addEventListener('unhandledrejection', event => {
   console.error('Unhandled Promise Rejection:', event.reason)
 })
 
-// 自动签到函数
-const autoSignIn = async () => {
-  const loginUserStore = useLoginUserStore()
-  // 确保用户已登录
-  if (loginUserStore.loginUser?.id) {
-    try {
-      await addUserSignInUsingPost()
-    } catch (error) {
-      console.error('自动签到失败:', error)
-    }
+// 自动签到：只在用户首次登录时触发一次
+const loginUserStore = useLoginUserStore()
+
+// helper: check and set per-user signed flag in localStorage
+function hasSignedForUser(userId: any) {
+  if (!userId) return false
+  try {
+    return !!localStorage.getItem(`signedInForUser:${userId}`)
+  } catch (e) {
+    return false
+  }
+}
+function markSignedForUser(userId: any) {
+  if (!userId) return
+  try {
+    localStorage.setItem(`signedInForUser:${userId}`, '1')
+  } catch (e) {
+    // ignore
   }
 }
 
-// 在应用启动时执行自动签到
-router.isReady().then(() => {
-  autoSignIn()
-})
+async function trySignInForUser(userId: any) {
+  if (!userId) return
+  if (hasSignedForUser(userId)) return
+  try {
+    const res = await addUserSignInUsingPost()
+    if (res?.data?.code === 0) {
+      markSignedForUser(userId)
+    }
+  } catch (e) {
+    console.error('自动签到失败:', e)
+  }
+}
 
-router.isReady().then(() => {
-  autoSignIn()
-})
+// 监听 loginUser 变化：当用户从未登录变为已登录时尝试签到（仅一次）
+watch(
+  () => loginUserStore.loginUser && loginUserStore.loginUser.id,
+  (id, oldId) => {
+    if (id && id !== oldId) {
+      trySignInForUser(id)
+    }
+  }
+)
 
 // 挂载应用
 app.mount('#app')
-// 使用nextTick确保在DOM更新后（也就是应用挂载完成后）执行后续逻辑
-import { nextTick } from 'vue'
+// 使用 nextTick 确保在 DOM 更新后（也就是应用挂载完成后）执行后续逻辑
 nextTick(() => {
   handleBackButton()
     .then(() => {
@@ -58,4 +81,40 @@ nextTick(() => {
     .catch((error) => {
       console.error('处理返回键时出现错误:', error)
     })
+  // 覆盖全局 message.error 为可点击任意处关闭且包含 Close 图标的样式
+  const originalError = message.error
+  message.error = ((content: any, duration?: number, onClose?: any) => {
+    const key = `global-err-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    const node = h(
+      'div',
+      { style: { display: 'flex', alignItems: 'center', gap: '8px', color: '#1a1a1a' } },
+      [
+        h(CloseOutlined, { style: { color: '#ff4d4f', fontSize: '18px' } }),
+        typeof content === 'string' ? content : String(content),
+      ],
+    )
+
+    // 只使用 message.open 显示自定义节点（不再调用 originalError，避免重复弹窗）
+    message.open({ content: node, key, duration: 0 })
+
+    const close = () => {
+      try {
+        message.destroy(key)
+      } finally {
+        if (typeof onClose === 'function') {
+          try { onClose() } catch (e) { /* ignore */ }
+        }
+      }
+    }
+
+    const onDocClick = () => {
+      close()
+      document.removeEventListener('click', onDocClick, true)
+    }
+
+    document.addEventListener('click', onDocClick, true)
+
+    // 返回一个兼容的对象/关闭句柄，调用方通常不会使用但保持一定兼容性
+    return { key, close } as any
+  }) as any
 })

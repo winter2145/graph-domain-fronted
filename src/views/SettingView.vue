@@ -252,7 +252,7 @@
                     <a-list-item>
                       <!-- 时间 -->
                       <div style="color:#64748b; min-width:150px;">
-                        {{ new Date(item.createTime).toLocaleString() }}
+                        {{ new Date(item.createTime).toLocaleString('zh-CN', { hour12: false }) }}
                       </div>
                       
                       <!-- 积分流水 -->
@@ -929,11 +929,24 @@ const autoSignIn = async () => {
   }
 }
 
-// 在 onMounted 钩子中调用自动签到
+// 在 onMounted 钩子中调用自动签到（仅首次进入设置页时触发一次）
 onMounted(async () => {
   // 确保用户已登录
   if (loginUserStore.loginUser.id) {
-    await autoSignIn()
+    // per-user visited flag
+    const userId = loginUserStore.loginUser.id
+    const key = `visitedSettingForUser:${userId}`
+    try {
+      const visited = !!localStorage.getItem(key)
+      if (!visited) {
+        // 只有首次进入设置页触发签到
+        await autoSignIn()
+        localStorage.setItem(key, '1')
+      }
+    } catch (e) {
+      // ignore storage errors and still try to sign in
+      await autoSignIn()
+    }
     await fetchSignInData()// 刷新签到数据显示
   }
 })

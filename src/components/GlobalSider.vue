@@ -168,8 +168,12 @@ const fetchTeamSpaces = async () => {
   }
 }
 
-// 挂载时获取一次
-onMounted(fetchTeamSpaces)
+// 挂载时获取一次（仅当已登录）
+onMounted(() => {
+  if (loginUserStore.loginUser.id) {
+    fetchTeamSpaces()
+  }
+})
 
 // 新增：监听登录用户 id 变化，自动刷新团队列表
 watch(
