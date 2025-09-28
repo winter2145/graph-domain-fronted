@@ -8,7 +8,7 @@ export async function getPointsInfoUsingGet(
   params: API.getPointsInfoUsingGETParams,
   options?: { [key: string]: any }
 ) {
-  return request<API.BaseResponse>('/api/points/info', {
+  return request<API.BaseResponseInt_>('/api/points/info', {
     method: 'GET',
     params: {
       ...params,
@@ -23,7 +23,7 @@ export async function getPointsInfoListUsingPost(
   params: API.getPointsInfoListUsingPOSTParams,
   options?: { [key: string]: any }
 ) {
-  return request<API.BaseResponse>('/api/points/list/page/vo', {
+  return request<API.BaseResponseInt_>('/api/points/list/page/vo', {
     method: 'POST',
     params: {
       ...params,
@@ -38,7 +38,7 @@ export async function getUserPointsLogsUsingGet(
   params: API.getUserPointsLogsUsingGETParams,
   options?: { [key: string]: any }
 ) {
-  return request<API.BaseResponse>('/api/points/logs', {
+  return request<API.BaseResponseInt_>('/api/points/logs', {
     method: 'GET',
     params: {
       // pageNum has a default value: 1

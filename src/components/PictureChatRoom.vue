@@ -35,7 +35,7 @@
                 <a-avatar
                   :src="msg.senderAvatar || getDefaultAvatar(msg.senderName || 'Guest')" 
                   class="clickable-avatar"
-                  @click="handleAvatarClick(String(msg.senderId || ''))"
+                  @click="handleAvatarClick(msg)"
                 />
                 <div class="message-content">
                   <!-- 只在图片聊天室和空间聊天室显示用户昵称 -->
@@ -402,15 +402,19 @@ const formatMessageDivider = (time: string) => {
 }
 
 // 处理头像点击
-const handleAvatarClick = (userId: string) => {
+const handleAvatarClick = (msg: any) => {
+  const userId = String(msg.senderId || '')
   if (!userId) return
+  console.log('点击头像，跳转用户详情页:', msg)
+
+  // 记录来源路由
+  sessionStorage.setItem('fromPath', router.currentRoute.value.fullPath)
+
+  // 跳转到用户详情页，
   router.push({
     path: `/user/${userId}`,
-    query: {
-      userName: loginUser.value?.userName || '',
-      userAvatar: loginUser.value?.userAvatar || getDefaultAvatar(loginUser.value?.userName || ''),
-      userAccount: loginUser.value?.userAccount || '',
-      createTime: loginUser.value?.createTime || ''
+    state: {
+      userName: msg.senderName,
     }
   })
 }

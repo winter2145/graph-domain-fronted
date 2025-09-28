@@ -20,8 +20,8 @@
 import { useRouter } from 'vue-router'
 import { useLoginUserStore } from '@/stores/useLoginUserStore.ts'
 import { listSpaceVoByPageUsingPost } from '@/api/spaceController.ts'
-import { message } from 'ant-design-vue'
-import { h, onMounted } from 'vue'
+import { message, Button } from 'ant-design-vue'
+import { h, onMounted, onBeforeUnmount } from 'vue'
 import { LoadingOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
 import { SPACE_TYPE_ENUM } from '@/constants/space.ts'
 
@@ -59,7 +59,46 @@ const checkUserSpace = async () => {
         router.replace(`/space/${space.id}`)
       } else {
         router.replace('/add_space')
-        message.info('即将为您创建个人空间')
+        const key = `create-space-${Date.now()}`
+
+        const closeMessage = () => {
+          message.destroy(key)
+          removeClickListener()
+        }
+
+        const content = h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, [
+          h('span', '请您创建个人空间'),
+          h(Button, { type: 'link', onClick: closeMessage }, { default: () => '关闭' }),
+        ])
+
+        message.open({
+          content,
+          key,
+          duration: 0,
+        })
+
+        const onDocClick = (ev: MouseEvent) => {
+          const target = ev.target as HTMLElement
+          // if clicked outside the central loading container, close the message
+          const container = document.querySelector('#mySpacePage .loading-container') as HTMLElement | null
+          if (!container) return
+          if (!container.contains(target)) {
+            closeMessage()
+          }
+        }
+
+        const removeClickListener = () => {
+          document.removeEventListener('click', onDocClick)
+        }
+
+        // attach listener to document to detect outside clicks
+        // use capture phase to ensure we can detect clicks before other handlers may stop propagation
+        document.addEventListener('click', onDocClick, true)
+        // ensure listener removed if component unmounts
+        onBeforeUnmount(() => {
+          removeClickListener()
+          message.destroy(key)
+        })
       }
     } else {
       message.error('加载我的空间失败，' + res.data.message)

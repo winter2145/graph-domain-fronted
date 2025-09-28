@@ -21,7 +21,7 @@
             <template #title> </template>
             <div class="image-container" :class="{ loaded: pictureLoaded }">
               <template v-if="pictureLoaded">
-                <a-image :src="picture.url" class="main-image" />
+                <a-image :src="picture.webpUrl" class="main-image" />
               </template>
               <template v-else>
                 <div class="loading-container">
@@ -304,6 +304,7 @@
 
 <script setup lang="ts">
 import { computed, h, onMounted, ref, watch, nextTick, onUnmounted } from 'vue'
+import { onBeforeRouteUpdate } from 'vue-router'
 import { deletePictureUsingPost, getPictureVoByIdUsingGet, incrementViewCountAPI } from '@/api/pictureController.ts'
 import { message } from 'ant-design-vue'
 import {
@@ -444,6 +445,37 @@ onMounted(async () => {
   startViewCountRefresh()
 })
 
+// 处理路由参数变化（复用组件时需要重新加载数据）
+onBeforeRouteUpdate(async (to, from) => {
+  try {
+    // 停止旧的定时器并清理状态
+    stopViewCountRefresh()
+    pictureLoaded.value = false
+    mounted.value = false
+
+    // 更新 props.id 已由路由完成，重新获取数据
+    await fetchPictureDetail()
+    await checkIsFollowed()
+
+    // 标记加载完成并播放入场动画
+    pictureLoaded.value = true
+    setTimeout(() => {
+      mounted.value = true
+    }, 100)
+
+    // 首次访问或切换图片时，登录用户增加浏览量
+    if (loginUserStore.loginUser) {
+      picture.value.viewCount = normalizeNumber(picture.value.viewCount) + 1
+      await incrementViewCountAPI({ pictureId: props.id })
+    }
+
+    // 重新启动定时刷新
+    startViewCountRefresh()
+  } catch (e) {
+    console.warn('路由更新时刷新图片详情失败', e)
+  }
+})
+
 // 通用权限检查函数
 function createPermissionChecker(permission: string) {
   return computed(() => {
@@ -519,7 +551,7 @@ const confirmDelete = async () => {
   }
 }
 
-// 下载图片
+// 下载原图图片
 const doDownload = () => {
   downloadImage(picture.value.url)
 }
@@ -535,7 +567,7 @@ const shareImage = ref('')
 const doShare = () => {
   shareLink.value = `${window.location.protocol}//${window.location.host}/picture/${picture.value.id}`
   // 设置分享图片，优先使用缩略图
-  shareImage.value = picture.value.thumbnailUrl || picture.value.url
+  shareImage.value = picture.value.thumbnailUrl || picture.value.webpUrl
   if (shareModalRef.value) {
     shareModalRef.value.openModal()
   }

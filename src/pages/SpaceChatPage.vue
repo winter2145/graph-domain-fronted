@@ -14,14 +14,14 @@
         <div class="chat-header">
           <div class="header-content">
             <div class="header-title">
+              <a-button class="back-btn" type="link" @click="goBack">
+                <template #icon><LeftOutlined /></template>
+              </a-button>
               <h2 class="space-name" :title="space.spaceName">{{ space.spaceName }}</h2>
               <span class="chat-type">团队聊天室</span>
             </div>
             <div class="header-actions">
               <div class="action-buttons">
-                <a-tooltip title="查看历史消息">
-                  <HistoryOutlined class="action-icon" />
-                </a-tooltip>
                 <a-tooltip title="团队公告">
                   <NotificationOutlined class="action-icon" />
                 </a-tooltip>
@@ -160,10 +160,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { getSpaceVoByIdUsingGet } from '@/api/spaceController'
 import { message } from 'ant-design-vue'
 import PictureChatRoom from '@/components/PictureChatRoom.vue'
-import { HistoryOutlined, NotificationOutlined, TeamOutlined } from '@ant-design/icons-vue'
+import { LeftOutlined, NotificationOutlined, TeamOutlined } from '@ant-design/icons-vue'
 import { getDeviceType } from '@/utils/device'
 import { DEVICE_TYPE_ENUM } from '@/constants/device'
-import dayjs from 'dayjs'
 import { getDefaultAvatar } from '@/utils/userUtils'
 
 const route = useRoute()
@@ -188,7 +187,7 @@ const handleShowMemberList = () => {
 // 修改获取空间信息的函数
 const fetchSpaceDetail = async () => {
   try {
-    const res = await getSpaceVoByIdUsingGet({ id })
+    const res = await getSpaceVoByIdUsingGet({ id: id })
     if (res.data.code === 0 && res.data.data) {
       space.value = res.data.data
       // 初始化成员列表，所有成员默认离线
@@ -238,7 +237,7 @@ const goToUserDetail = (user: API.UserVO) => {
     path: `/user/${user.id}`,
     query: {
       userName: user.userName,
-      userAvatar: user.userAvatar || getDefaultAvatar(user.userName),
+      userAvatar: user.userAvatar || getDefaultAvatar(user.userName ?? ''),
       userAccount: user.userAccount,
       userProfile: user.userProfile,
       userRole: user.userRole,
@@ -250,6 +249,15 @@ const goToUserDetail = (user: API.UserVO) => {
 onMounted(() => {
   fetchSpaceDetail()
 })
+
+// 返回到空间详情
+const goBack = () => {
+  if (id) {
+    router.push({ path: `/space/${id}` })
+  } else {
+    router.back()
+  }
+}
 </script>
 
 <style scoped>
@@ -466,6 +474,19 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   width: auto; /* 不再占满宽度 */
+}
+
+.back-btn {
+  padding: 4px 8px;
+  margin-right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+.back-btn:hover {
+  color: #ff8e53;
 }
 
 .action-buttons {

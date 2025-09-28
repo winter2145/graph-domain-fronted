@@ -16,7 +16,7 @@
                 <div class="image-container">
                   <img
                     :alt="picture.name"
-                    :src="`${picture.thumbnailUrl ?? picture.url}?${new Date().getTime()}`"
+                    :src="`${picture.thumbnailUrl ?? picture.webpUrl ?? picture.url}?${new Date().getTime()}`"
                     @load="handleImageLoad(picture)"
                     @error="handleImageError(picture)"
                   />

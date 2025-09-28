@@ -156,6 +156,19 @@ declare namespace API {
     userId: number
   }
 
+  type getPointsInfoListUsingPOSTParams = {
+    /** current */
+    current?: number
+    /** pageSize */
+    pageSize?: number
+    /** sortField */
+    sortField?: string
+    /** sortOrder */
+    sortOrder?: string
+    /** userId */
+    userId?: number
+  }
+
   type BaseResponseListSpaceUserVO_ = {
     code?: number
     data?: SpaceUserVO[]
@@ -930,6 +943,7 @@ declare namespace API {
     spaceId?: number
     tags?: string[]
     thumbnailUrl?: string
+    webpUrl?: string
     updateTime?: string
     url?: string
     user?: UserVO

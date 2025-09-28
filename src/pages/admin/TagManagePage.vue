@@ -4,7 +4,9 @@
     <template v-if="device === DEVICE_TYPE_ENUM.PC">
       <!-- 搜索与添加按钮容器，使其在同一行显示 -->
       <div class="search-and-add-container">
+        <h2>标签管理</h2>
         <a-form layout="inline" :model="searchParams" @finish="doSearch">
+          
           <a-form-item label="标签名称">
             <a-input v-model:value="searchParams.tagName" placeholder="输入标签名称" allow-clear />
           </a-form-item>
