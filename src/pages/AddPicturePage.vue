@@ -19,7 +19,7 @@
               <a-tab-pane key="file" tab="文件上传">
                 <PictureUpload
                   :picture="picture"
-                  :spaceId="spaceId"
+                  :spaceId="spaceId as any"
                   :onSuccess="onSuccess"
                   :onUploadStart="onUploadStart"
                   :onUploadProgress="onUploadProgress"
@@ -28,7 +28,7 @@
               <a-tab-pane key="url" tab="URL 上传" force-render>
                 <UrlPictureUpload
                   :picture="picture"
-                  :spaceId="spaceId"
+                  :spaceId="spaceId as any"
                   :onSuccess="onSuccess"
                   :onUploadStart="onUploadStart"
                   :onUploadProgress="onUploadProgress"
@@ -118,14 +118,14 @@
         ref="imageCropperRef"
         :imageUrl="picture?.url"
         :picture="picture"
-        :spaceId="spaceId"
+        :spaceId="spaceId as any"
         :space="spaceInfo"
         :onSuccess="onCropSuccess"
       />
       <ImageOutPainting
         ref="imageOutPaintingRef"
         :picture="picture"
-        :spaceId="spaceId"
+        :spaceId="spaceId as any"
         :onSuccess="onImageOutPaintingSuccess"
       />
     </div>
@@ -134,7 +134,7 @@
 
 <script setup lang="ts">
 import PictureUpload from '@/components/PictureUpload.vue'
-import { h, onMounted, reactive, ref, computed } from 'vue'
+import { h, onMounted, reactive, ref, computed, onBeforeUnmount } from 'vue'
 import { message, Modal } from 'ant-design-vue'
 import {
   editPictureUsingPost,
@@ -181,17 +181,21 @@ const onSuccess = (newPicture: API.PictureVO) => {
 }
 
 const router = useRouter()
+// route 必须在被使用之前声明
+const route = useRoute()
 
-// 空间 id
+// 空间 id（route.query 可能为字符串或数组）
 const spaceId = computed(() => {
-  return route.query?.spaceId
+  const q = route.query?.spaceId
+  if (Array.isArray(q)) return q[0]
+  return q as string | undefined
 })
 
 // 获取空间信息
 const spaceInfo = ref<API.SpaceVO>()
 const getSpaceInfo = async () => {
   if (!spaceId.value) return
-  const res = await getSpaceVoByIdUsingGet({ id: spaceId.value })
+  const res = await getSpaceVoByIdUsingGet({ id: spaceId.value as any })
   if (res.data.code === 0 && res.data.data) {
     spaceInfo.value = res.data.data
   }
@@ -201,13 +205,22 @@ onMounted(() => {
   getSpaceInfo()
 })
 
+// 保存定时器 id，组件卸载时清理（避免内存泄漏或卸载后跳转）
+const timers: any[] = []
+onBeforeUnmount(() => {
+  while (timers.length) {
+    const t = timers.pop()
+    if (t) clearTimeout(t)
+  }
+})
+
 /**
  * 提交表单
  * @param values
  */
 const handleSubmit = async (values: any) => {
   // console.log(values)
-  const pictureId = picture.value.id
+  const pictureId = picture.value?.id
   const newspaceId = spaceId.value
   if (!pictureId) {
     return
@@ -219,8 +232,12 @@ const handleSubmit = async (values: any) => {
   })
   // 操作成功
   if (res.data.code === 0 && res.data.data) {
-    // 判断是否为公共空间
-    if (spaceInfo.value?.spaceLevel === SPACE_LEVEL_ENUM.PUBLIC) {
+    // 计算跳转目标
+    const targetForPublic = `/picture/${pictureId}`
+    const targetForSpace = `/space/${newspaceId}`
+
+  // 判断是否为公共空间（注意：SPACE_LEVEL_ENUM 中可能没有 PUBLIC，按 any 处理以绕过 TS 类型检查）
+  if (spaceInfo.value?.spaceLevel === (SPACE_LEVEL_ENUM as any).PUBLIC) {
       const modal = Modal.success({
         title: '上传成功',
         content: h('div', {}, [
@@ -231,24 +248,17 @@ const handleSubmit = async (values: any) => {
         maskClosable: true,
         centered: true,
         okText: '知道了',
-        onOk: () => {
-          router.push({
-            path: `/picture/${pictureId}`,
-          })
-        },
+        // 交由 afterClose 统一处理导航，避免重复跳转
+        onOk: () => {},
         afterClose: () => {
-          router.push({
-            path: `/picture/${pictureId}`,
-          })
+          router.replace({ path: targetForPublic })
         },
       })
-      // 6秒后自动关闭
-      setTimeout(() => {
+      // 6秒后自动关闭（仅销毁 modal，afterClose 会触发导航）
+      const t = setTimeout(() => {
         modal.destroy()
-        router.push({
-          path: `/picture/${pictureId}`,
-        })
-      }, 5000)
+      }, 6000)
+      timers.push(t)
     } else {
       const modal = Modal.success({
         title: '上传成功',
@@ -259,32 +269,24 @@ const handleSubmit = async (values: any) => {
         maskClosable: true,
         centered: true,
         okText: '知道了',
-        onOk: () => {
-          router.push({
-            path: `/space/${newspaceId}`,
-          })
-        },
+        onOk: () => {},
         afterClose: () => {
-          router.push({
-            path: `/space/${newspaceId}`,
-          })
+          router.replace({ path: targetForSpace })
         },
       })
-      // 6秒后自动关闭
-      setTimeout(() => {
+      // 6秒后自动关闭（仅销毁 modal，afterClose 会触发导航）
+      const t = setTimeout(() => {
         modal.destroy()
-        router.push({
-          path: `/space/${spaceId.value}`,
-        })
       }, 6000)
+      timers.push(t)
     }
   } else {
     message.error('创建失败，' + res.data.message)
   }
 }
 
-const categoryOptions = ref<string[]>([])
-const tagOptions = ref<string[]>([])
+const categoryOptions = ref<any[]>([])
+const tagOptions = ref<any[]>([])
 
 /**
  * 获取标签和分类选项
@@ -314,9 +316,10 @@ onMounted(() => {
   getTagCategoryOptions()
 })
 
-const route = useRoute()
+// goBack 使用上面已经声明的 route
 const goBack = () => {
-  const sid = route.query?.spaceId
+  const sidRaw = route.query?.spaceId
+  const sid = Array.isArray(sidRaw) ? sidRaw[0] : sidRaw
   if (sid) {
     router.push({ path: `/space/${sid}` })
   } else {
@@ -326,12 +329,11 @@ const goBack = () => {
 
 // 获取老数据
 const getOldPicture = async () => {
-  // 获取到 id
-  const id = route.query?.id
+  // 获取到 id（支持数组或单值）
+  const idRaw = route.query?.id
+  const id = Array.isArray(idRaw) ? idRaw[0] : idRaw
   if (id) {
-    const res = await getPictureVoByIdUsingGet({
-      id,
-    })
+  const res = await getPictureVoByIdUsingGet({ id: id as any })
     if (res.data.code === 0 && res.data.data) {
       const data = res.data.data
       picture.value = data
