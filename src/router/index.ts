@@ -245,9 +245,9 @@ const router = createRouter({
       }
     },
     {
-      path: '/forum',
-      name: '论坛',
-      component: () => import('@/pages/ForumPage.vue'),
+      path: '/ai_draw',
+      name: 'ai绘图',
+      component: () => import('@/pages/AiDrawPage.vue'),
       meta: {
         keepAlive: false,
         needLogin: true

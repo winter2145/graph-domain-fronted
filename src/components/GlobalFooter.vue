@@ -24,7 +24,7 @@
   <span :class="['tab-text', { 'text-active-home': active === 0 }]">首页</span>
       </van-tabbar-item>
 
-  <van-tabbar-item @click="handleNav('/forum')">
+  <van-tabbar-item @click="handleNav('/ai_draw')">
         <template #icon="props">
           <div id="footerForumIcon" class="custom-icon">
             <van-icon name="friends" :class="{ 'icon-active-forum': props.active }" />
@@ -111,7 +111,7 @@ onMounted(async () => {
     active.value = 1
   } else if (currentPath === '/my') {
     active.value = 4
-  } else if (currentPath === '/forum') {
+  } else if (currentPath === '/ai_draw') {
     active.value = 1
   } else if (currentPath === '/chat-list') {
     active.value = 3
@@ -135,7 +135,7 @@ router.afterEach((to) => {
   if (currentPath === '/') {
     active.value = 0
     showActionSheet.value = false
-  } else if (currentPath === '/forum') {
+  } else if (currentPath === '/ai_draw') {
     active.value = 1
     showActionSheet.value = false
   } else if (currentPath === '/chat-list') {
@@ -163,7 +163,7 @@ const handleNav = (path: string) => {
   }
 
   // 其他路由按需设置 active
-  if (path === '/forum') {
+  if (path === '/ai_draw') {
     active.value = 1
   } else if (path === '/chat-list') {
     active.value = 3

@@ -291,13 +291,13 @@ const originItems = [
     title: '主页',
   },
   {
-    key: '/forum',
+    key: '/ai_draw',
     icon: () =>
       h(FileTextOutlined, {
         style: {
           fontSize: '18px',
-          color: route.path === '/forum' ? iconColors.spaces.active : iconColors.spaces.default,
-          filter: route.path === '/forum' ? `drop-shadow(0 2px 4px ${iconColors.spaces.shadow})` : 'none',
+          color: route.path === '/ai_draw' ? iconColors.spaces.active : iconColors.spaces.default,
+          filter: route.path === '/ai_draw' ? `drop-shadow(0 2px 4px ${iconColors.spaces.shadow})` : 'none',
           transition: 'all 0.3s ease',
         },
       }),

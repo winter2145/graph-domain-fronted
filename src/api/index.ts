@@ -21,6 +21,7 @@ import * as spaceUserController from './spaceUserController'
 import * as tagController from './tagController'
 import * as userController from './userController'
 import * as userFollowsController from './userFollowsController'
+import * as aiDrawController from './aiDrawController'
 export default {
   categoryController,
   commentsController,
@@ -41,4 +42,5 @@ export default {
   tagController,
   userController,
   userFollowsController,
+  aiDrawController,
 }

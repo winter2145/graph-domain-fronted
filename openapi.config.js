@@ -3,7 +3,7 @@
 (async () => {
   try {
     await generateService({
-      schemaPath: 'http://localhost:8080/api/v2/api-docs',
+      schemaPath: 'http://localhost:8080/api/v3/api-docs',
       serversPath: './src/generate',
       requestLibPath: "import request from '@/request'",
     });

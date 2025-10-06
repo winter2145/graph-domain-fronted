@@ -1,4 +1,77 @@
 declare namespace API {
+
+  // AI绘画相关
+  type AiChatMessageVO = {
+    role?: string
+    content?: string
+    imageUrl?: string
+    createTime?: string
+  }
+
+  type AiChatSessionVO = {
+    id?: number
+    title?: string
+    createTime?: string
+  }
+
+  type AiGenerateImageVO = {
+    type?: string
+    role?: string
+    content?: string
+    cosUrl?: string
+    roundId?: number
+  }
+
+  type BaseResponseListAiChatSessionVO = {
+    code?: number
+    data?: AiChatSessionVO[]
+    message?: string
+  }
+
+  type BaseResponseListAiChatMessageVO = {
+    code?: number
+    data?: AiChatMessageVO[]
+    message?: string
+  }
+
+  type BaseResponseAiGenerateImageVO = {
+    code?: number
+    data?: AiGenerateImageVO
+    message?: string
+  }
+
+  type CreateSessionRequest = {
+    userId: string
+    title?: string
+  }
+
+  type GenerateImageRequest = {
+    userId: string
+    prompt: string
+  }
+
+  type getMessagesParams = {
+    sessionId: number
+  }
+
+  type generateImageParams = {
+    sessionId: number
+  }
+
+  type getUserSessionsParams = {
+    userId: string
+  }
+
+  type updateSessionTitleParams = {
+    sessionId: number
+  }
+
+  type BaseResponseString = {
+    code?: number
+    data?: string
+    message?: string
+  }
+
   type addCategoryUsingPOSTParams = {
     /** categoryName */
     categoryName: string
