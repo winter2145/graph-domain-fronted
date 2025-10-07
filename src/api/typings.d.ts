@@ -22,6 +22,26 @@ declare namespace API {
     roundId?: number
   }
 
+  type getMessagesByPageParams = {
+    sessionId: number
+  }
+
+  type AiDrawQueryRequest = {
+    current?: number
+    pageSize?: number
+    sortField?: string
+    sortOrder?: string
+    userId?: number
+    sessionId?: number
+  }
+
+  type BaseResponsePageAiChatMessageVO = {
+    code?: number
+    data?: PageAiChatMessageVO
+    message?: string
+  }
+
+
   type BaseResponseListAiChatSessionVO = {
     code?: number
     data?: AiChatSessionVO[]

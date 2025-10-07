@@ -19,6 +19,29 @@ export async function getMessages(
   )
 }
 
+/** 此处后端没有提供注释 POST /ai_draw/session/${param0}/history_messages */
+export async function getMessagesByPage(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.getMessagesByPageParams,
+  body: API.AiDrawQueryRequest,
+  options?: { [key: string]: any }
+) {
+  const { sessionId: param0, ...queryParams } = params
+  return request<API.BaseResponsePageAiChatMessageVO>(
+    `/api/ai_draw/session/${param0}/history_messages`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      params: { ...queryParams },
+      data: body,
+      ...(options || {}),
+    }
+  )
+}
+
+
 /** 此处后端没有提供注释 POST /ai_draw/session/${param0}/message */
 export async function generateImage(
   // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)

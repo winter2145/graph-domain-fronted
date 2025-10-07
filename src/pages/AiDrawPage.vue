@@ -45,7 +45,7 @@
       <div class="chat-header">
         <div class="chat-header-left">
           <a-button type="text" class="sidebar-toggle" @click="toggleSidebar">
-            <template v-if="sidebarOpen"><CloseOutlined /></template>
+            <template v-if="sidebarOpen"><MenuOutlined /></template>
             <template v-else><MenuOutlined /></template>
           </a-button>
         </div>
@@ -81,13 +81,13 @@
       </div>
 
       <div class="chat-input">
-        <a-input
-          v-model:value="prompt"
-          placeholder="描述你想生成的图像（例如：一只穿宇航服的猫，在月球上漫步，高清、油画风）"
-          :disabled="!currentSession || generating"
-          @keydown.enter.native="handleGenerate"
-        />
-        <a-button type="primary" :loading="generating" @click="handleGenerate" :disabled="!prompt || !currentSession">
+              <a-input
+                v-model:value="prompt"
+                placeholder="描述你想生成的图像（例如：一只穿宇航服的猫，在月球上漫步，高清、油画风）"
+                :disabled="generating || (!currentSession && sessions.length > 0)"
+                @keydown.enter.native="handleGenerate"
+              />
+        <a-button type="primary" :loading="generating" @click="handleGenerate" :disabled="!prompt || (sessions.length > 0 && !currentSession)">
           <template #icon><SendOutlined /></template>
           生成图片
         </a-button>
@@ -122,7 +122,7 @@ import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { LeftOutlined, PlusOutlined, SendOutlined, MenuOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons-vue'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
-import { getUserSessions, createSession, getMessages, generateImage, updateSessionTitle } from '@/api/aiDrawController'
+import { getUserSessions, createSession, getMessages, getMessagesByPage, generateImage, updateSessionTitle } from '@/api/aiDrawController'
 import { message } from 'ant-design-vue'
 
 const router = useRouter()
@@ -143,6 +143,12 @@ const loadingMessages = ref(false)
 const prompt = ref('')
 const generating = ref(false)
 const chatBodyRef = ref<HTMLElement | null>(null)
+// pagination state for messages
+const pageNum = ref(1)
+const pageSize = ref(20)
+const totalMessages = ref<number | null>(null)
+const hasMore = ref(false)
+const loadingMore = ref(false)
   // preview modal
   const preview = ref({ visible: false, src: '' })
 
@@ -263,6 +269,8 @@ async function createNewSession() {
 }
 
 async function selectSession(session: API.AiChatSessionVO) {
+  // detach previous scroll listener (if any) before switching
+  detachChatScrollListener()
   currentSession.value = session
   await loadMessages(session.id || 0)
   if (isMobile.value) {
@@ -271,19 +279,105 @@ async function selectSession(session: API.AiChatSessionVO) {
 }
 
 async function loadMessages(sessionId: number) {
+  // Backend returns messages in DESC order (newest first). We want to display
+  // messages chronologically (oldest -> newest) so newest is at bottom.
   loadingMessages.value = true
   messages.value = []
+  pageNum.value = 1
+  hasMore.value = false
   try {
-    const res = await getMessages({ sessionId })
-    if (res && res.data && res.data.code === 0) {
-      messages.value = res.data.data || []
-      await nextTick()
-      scrollToBottom()
+    const res = await getMessagesByPage({ sessionId }, ({ pageNum: 1, pageSize: pageSize.value } as any))
+    const data = res && res.data && res.data.data
+    const extractRecords = (d: any) => {
+      if (!d) return []
+      if (Array.isArray(d)) return d
+      if (d.records && Array.isArray(d.records)) return d.records
+      if (d.list && Array.isArray(d.list)) return d.list
+      if (d.data && Array.isArray(d.data)) return d.data
+      return []
     }
+    const records = extractRecords(data) || []
+    // backend returns newest->oldest; reverse to display oldest->newest so newest at bottom
+    const pageRecords = records.slice().reverse()
+    messages.value = pageRecords
+    // determine hasMore: if returned page full, there may be older pages
+    hasMore.value = records.length === pageSize.value
+    pageNum.value = 1
+    await nextTick()
+    attachChatScrollListener()
+    // scroll to bottom to show newest messages
+    scrollToBottom()
   } catch (e) {
     console.error('加载消息失败', e)
   } finally {
     loadingMessages.value = false
+  }
+}
+
+function attachChatScrollListener() {
+  // remove existing
+  const el = chatBodyRef.value as any
+  if (!el) return
+  // ensure we don't attach multiple listeners
+  el.removeEventListener('scroll', onChatScroll)
+  el.addEventListener('scroll', onChatScroll)
+}
+
+function detachChatScrollListener() {
+  const el = chatBodyRef.value as any
+  if (!el) return
+  el.removeEventListener('scroll', onChatScroll)
+}
+
+async function loadOlderMessages() {
+  if (!currentSession.value) return
+  if (!hasMore.value) return
+  if (loadingMore.value) return
+  const el = chatBodyRef.value as any
+  if (!el) return
+  loadingMore.value = true
+  const prevScrollHeight = el.scrollHeight
+  // backend is DESC: page 1 is newest, page 2 older, so to load older messages request pageNum + 1
+  const targetPage = pageNum.value + 1
+  try {
+  const res = await getMessagesByPage({ sessionId: Number(currentSession.value.id) }, ({ pageNum: targetPage, pageSize: pageSize.value } as any))
+    const data = res && res.data && res.data.data
+    const extractRecords = (d: any) => {
+      if (!d) return []
+      if (Array.isArray(d)) return d
+      if (d.records && Array.isArray(d.records)) return d.records
+      if (d.list && Array.isArray(d.list)) return d.list
+      if (d.data && Array.isArray(d.data)) return d.data
+      return []
+    }
+    const newRecords = extractRecords(data) || []
+    if (newRecords.length > 0) {
+      // backend returns page in DESC newest->oldest, reverse page to oldest->newest
+      const pageRecords = newRecords.slice().reverse()
+      // prepend the older page records
+      messages.value = [...pageRecords, ...messages.value]
+      pageNum.value = targetPage
+      // recompute hasMore: if returned full page, likely more older messages
+      hasMore.value = newRecords.length === pageSize.value
+      await nextTick()
+      const newScrollHeight = el.scrollHeight
+      el.scrollTop = newScrollHeight - prevScrollHeight
+    } else {
+      hasMore.value = false
+    }
+  } catch (e) {
+    console.error('加载历史消息失败', e)
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+function onChatScroll(e: Event) {
+  const el = e.target as HTMLElement
+  if (!el) return
+  // when scrolled near top, load older messages
+  if (el.scrollTop <= 80 && hasMore.value && !loadingMore.value) {
+    loadOlderMessages()
   }
 }
 
@@ -323,7 +417,21 @@ async function loadMessages(sessionId: number) {
 }
 
 async function handleGenerate() {
-  if (!prompt.value || !currentSession.value) return
+  if (!prompt.value) return
+
+  // if there's no selected session, create one automatically
+  if (!currentSession.value) {
+    await createNewSession()
+    // try to select first session if backend didn't explicitly return created id
+    if (!currentSession.value && sessions.value.length > 0) {
+      await selectSession(sessions.value[0])
+    }
+    if (!currentSession.value) {
+      message.error('无法创建会话，请稍后重试')
+      return
+    }
+  }
+
   // capture prompt and clear input immediately so UI resets
   const currentPrompt = prompt.value
   prompt.value = ''
@@ -399,16 +507,18 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener('mousemove', onResizeMove)
   window.removeEventListener('mouseup', stopResize)
+  detachChatScrollListener()
 })
 </script>
 
 <style scoped>
 .ai-draw-page {
   display: flex;
-  height: calc(100vh - 64px);
+  height: 100%;
   gap: 1px;
   padding: 1px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 .left-panel {
   width: 320px;
@@ -433,10 +543,6 @@ onUnmounted(() => {
 
 .session-actions { margin-left: auto; display:flex; align-items:center }
 .edit-session-btn { color: rgba(0,0,0,0.45) }
-
-@media (max-width: 900px) {
-  .edit-session-btn { display: none }
-}
 
 .resizer {
   width: 6px;
@@ -514,5 +620,19 @@ onUnmounted(() => {
   .left-panel { width: 100%; height: 100% }
   .right-panel { flex: 1 }
   .message-image img { max-width: 100% }
+}
+</style>
+
+/* global override: when AiDrawPage is inside BasicLayout's content, remove extra padding
+   so the page fills the available area and avoids the top whitespace from BasicLayout */
+<style>
+#basicLayout .content > .ai-draw-page {
+  /* pull the page up/left to compensate the parent's 28px padding so it visually fills the area */
+  position: relative !important;
+  top: -28px !important;
+  left: -28px !important;
+  width: calc(100% + 56px) !important;
+  padding: 0 !important;
+  margin: 0 !important;
 }
 </style>
