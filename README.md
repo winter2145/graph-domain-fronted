@@ -7,6 +7,8 @@
 ![img_3.png](public/img_3.png)
 ![img_4.png](public/img_4.png)
 ![img_5.png](public/img_5.png)
+![img_7.jpg](public/img_7.jpg)
+
 
 
 ## 快速上手
