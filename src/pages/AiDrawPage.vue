@@ -456,6 +456,10 @@ function onChatScroll(e: Event) {
 async function handleGenerate() {
   if (!prompt.value) return
 
+  // capture prompt and clear input immediately so UI resets
+  const currentPrompt = prompt.value
+  prompt.value = ''
+
   // if there's no selected session, create one automatically
   if (!currentSession.value) {
     await createNewSession()
@@ -468,10 +472,6 @@ async function handleGenerate() {
       return
     }
   }
-
-  // capture prompt and clear input immediately so UI resets
-  const currentPrompt = prompt.value
-  prompt.value = ''
   // optimistic: push user message immediately (right side)
   const userMsg: API.AiChatMessageVO = {
     role: 'user',
@@ -656,7 +656,7 @@ onUnmounted(() => {
 }
 .messages-container {
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   flex: 1;
 }
 .message-item { max-width: 720px }
