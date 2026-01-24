@@ -21,13 +21,18 @@
             <template #renderItem="{ item }">
               <a-list-item :class="['session-item', { active: currentSession?.id === item.id }]">
                 <a-list-item-meta @click="selectSession(item)">
-                  <template #title>{{ item.title || `会话 ${item.id}` }}</template>
+                  <template #title>{{ formatSessionTitle(item) }}</template>
                   <template #description>{{ item.createTime }}</template>
                 </a-list-item-meta>
                 <div class="session-actions">
                   <a-button type="text" size="small" class="edit-session-btn" @click.stop="openEditSession(item)">
                     <EditOutlined />
                   </a-button>
+                  <a-popconfirm title="确认删除会话吗？" ok-text="删除" cancel-text="取消" @confirm="confirmDeleteSession(item)">
+                    <a-button type="text" size="small" class="delete-session-btn" @click.stop>
+                      <DeleteOutlined />
+                    </a-button>
+                  </a-popconfirm>
                 </div>
               </a-list-item>
             </template>
@@ -142,9 +147,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { LeftOutlined, PlusOutlined, SendOutlined, MenuOutlined, CloseOutlined, EditOutlined, UpOutlined } from '@ant-design/icons-vue'
+import { LeftOutlined, PlusOutlined, SendOutlined, MenuOutlined, CloseOutlined, EditOutlined, UpOutlined, DeleteOutlined } from '@ant-design/icons-vue'
 import { useLoginUserStore } from '@/stores/useLoginUserStore'
-import { getUserSessions, createSession, getMessages, getMessagesByPage, generateImage, updateSessionTitle } from '@/api/aiDrawController'
+import { getUserSessions, createSession, getMessages, getMessagesByPage, generateImage, updateSessionTitle, deleteSession } from '@/api/aiDrawController'
 import { message } from 'ant-design-vue'
 
 const router = useRouter()
@@ -184,6 +189,36 @@ const loadingMore = ref(false)
   
   // 添加是否在顶部的状态
   const isAtTop = ref(false)
+
+  // Normalize records: ensure returned array is chronological (oldest -> newest).
+  // Some APIs return pages in newest->oldest order; others already return
+  // oldest->newest. We detect by comparing first/last createTime and reverse
+  // when necessary.
+  function normalizeRecords(records: any[]) {
+    if (!records || records.length < 2) return records.slice()
+    const toMillis = (c: any) => {
+      if (!c) return 0
+      try {
+        const s = String(c).replace(' ', 'T')
+        const t = Date.parse(s)
+        return isNaN(t) ? 0 : t
+      } catch (e) {
+        return 0
+      }
+    }
+    // sort by time asc; if same time, prefer role ordering (user before assistant),
+    // otherwise preserve original index to keep stable ordering.
+    return records
+      .map((r, i) => ({ r, i, t: toMillis(r.createTime), role: String(r.role || '') }))
+      .sort((a, b) => {
+        if (a.t !== b.t) return a.t - b.t
+        const weight = (role: string) => (role === 'user' ? 0 : role === 'assistant' ? 1 : 2)
+        const dw = weight(a.role) - weight(b.role)
+        if (dw !== 0) return dw
+        return a.i - b.i
+      })
+      .map(x => x.r)
+  }
 
 function goHome() {
   router.push({ path: '/' })
@@ -228,6 +263,31 @@ function goHome() {
     } catch (e) {
       message.error('更新会话名称异常')
       console.error('更新会话名称异常', e)
+    }
+  }
+
+  // 删除会话
+  async function confirmDeleteSession(session: API.AiChatSessionVO) {
+    if (!session || !session.id) return
+    const sessionId = Number(session.id)
+    try {
+      const res = await (deleteSession as any)({ sessionId })
+      if (res && res.data && res.data.code === 0 && res.data.data) {
+        // remove from local list
+        sessions.value = sessions.value.filter(s => String(s.id) !== String(sessionId))
+        // if deleted current session, clear current and messages
+        if (currentSession.value && String(currentSession.value.id) === String(sessionId)) {
+          currentSession.value = null
+          messages.value = []
+        }
+        message.success('会话已删除')
+      } else {
+        console.error('删除会话失败', res)
+        message.error('删除会话失败')
+      }
+    } catch (e) {
+      console.error('删除会话异常', e)
+      message.error('删除会话异常')
     }
   }
 
@@ -304,8 +364,8 @@ async function selectSession(session: API.AiChatSessionVO) {
 }
 
 async function loadMessages(sessionId: number) {
-  // Backend returns messages in DESC order (newest first). We want to display
-  // messages chronologically (oldest -> newest) so newest is at bottom.
+  // Use the server-provided order and display messages as-is (top->bottom
+  // follows the response array order). Do not reverse the returned records.
   loadingMessages.value = true
   messages.value = []
   pageNum.value = 1
@@ -322,8 +382,8 @@ async function loadMessages(sessionId: number) {
       return []
     }
     const records = extractRecords(data) || []
-    // backend returns newest->oldest; reverse to display oldest->newest so newest at bottom
-    const pageRecords = records.slice().reverse()
+    // normalize to chronological order (oldest -> newest)
+    const pageRecords = normalizeRecords(records)
     messages.value = pageRecords
     // determine hasMore: if returned page full, there may be older pages
     hasMore.value = records.length === pageSize.value
@@ -363,7 +423,8 @@ async function loadOlderMessages() {
   if (!el) return
   loadingMore.value = true
   const prevScrollHeight = el.scrollHeight
-  // backend is DESC: page 1 is newest, page 2 older, so to load older messages request pageNum + 1
+  // Request next page based on current paging. Keep server page order when
+  // inserting the returned records so displayed order matches backend.
   const targetPage = pageNum.value + 1
   try {
   const res = await getMessagesByPage({ sessionId: Number(currentSession.value.id) }, ({ current: targetPage, pageSize: pageSize.value } as any))
@@ -378,9 +439,8 @@ async function loadOlderMessages() {
     }
     const newRecords = extractRecords(data) || []
     if (newRecords.length > 0) {
-      // backend returns page in DESC newest->oldest, reverse page to oldest->newest
-      const pageRecords = newRecords.slice().reverse()
-      // prepend the older page records
+      // normalize page records to chronological order before prepending
+      const pageRecords = normalizeRecords(newRecords)
       messages.value = [...pageRecords, ...messages.value]
       pageNum.value = targetPage
       // recompute hasMore: if returned full page, likely more older messages
@@ -452,6 +512,24 @@ function onChatScroll(e: Event) {
   // basic escaping + newline -> <br>
   return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')
 }
+
+  // 会话标题格式化：优先使用 item.title；否则使用 createTime（或当前时间）生成 `新会话_D/M/YY` 格式
+  function formatSessionTitle(item: any) {
+    if (!item) return '新会话'
+    if (item.title) return String(item.title)
+    const raw = item.createTime || new Date().toISOString()
+    let d = new Date(String(raw))
+    if (isNaN(d.getTime())) {
+      // 支持后端可能返回的 'YYYY-MM-DD hh:mm:ss' 格式
+      const s = String(raw).replace(' ', 'T')
+      d = new Date(s)
+      if (isNaN(d.getTime())) d = new Date()
+    }
+    const day = d.getDate()
+    const month = d.getMonth() + 1
+    const year = String(d.getFullYear()).slice(-2)
+    return `新会话_${year}/${month}/${day}`
+  }
 
 async function handleGenerate() {
   if (!prompt.value) return
@@ -580,6 +658,7 @@ onUnmounted(() => {
 
 .session-actions { margin-left: auto; display:flex; align-items:center }
 .edit-session-btn { color: rgba(0,0,0,0.45) }
+.delete-session-btn { color: rgba(255,85,85,0.85) }
 
 .resizer {
   width: 6px;

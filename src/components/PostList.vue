@@ -77,7 +77,7 @@ import { message } from 'ant-design-vue'
 import { useRouter } from 'vue-router'
 import { getDefaultAvatar } from '@/utils/userUtils'
 import { formatTime } from '@/utils/dateUtils'
-import { likePostUsingPost } from '@/api/postController'
+
 import { doLikeUsingPost } from '@/api/likeRecordController'
 import { getPostCoverImage, getRandomCoverImage } from '@/utils/imageUtils'
 import { computed, onMounted, onUnmounted, ref } from 'vue'

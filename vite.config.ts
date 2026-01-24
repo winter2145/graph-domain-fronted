@@ -11,15 +11,10 @@ export default defineConfig(({ command, mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
 
-  // 生产环境下禁用 console
+  // 生产环境标志
   const isProd = mode === 'production'
-  if (isProd) {
-    console.log = () => { }
-    console.error = () => { }
-    console.warn = () => { }
-    console.info = () => { }
-    console.debug = () => { }
-  }
+  // 请不要在构建期间全局覆盖 `console`，会导致构建日志和错误被屏蔽。
+  // 使用 terserOptions.drop_console 在打包阶段移除客户端的 console 调用。
 
   return {
     plugins: [

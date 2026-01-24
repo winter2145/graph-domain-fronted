@@ -6,7 +6,6 @@
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { SearchOutlined, PlusOutlined } from '@ant-design/icons-vue'
-import { listPostByPageUsingPost, getFollowPostsUsingPost } from '@/api/postController'
 import { listCategoryByTypeUsingGet } from '@/api/categoryController'
 import PostList from '@/components/PostList.vue'
 import { POST_STATUS_ENUM } from '@/constants/post'

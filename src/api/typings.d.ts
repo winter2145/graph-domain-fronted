@@ -41,6 +41,11 @@ declare namespace API {
     message?: string
   }
 
+  type deleteSessionParams = {
+    sessionId: number
+  }
+
+
 
   type BaseResponseListAiChatSessionVO = {
     code?: number
