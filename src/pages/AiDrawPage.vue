@@ -621,15 +621,15 @@ async function handleGenerate() {
 
 onMounted(async () => {
   await loadSessions()
-  // detect mobile
+  // 检测移动设备
   isMobile.value = window.innerWidth <= 900
-  // on mobile default: keep sidebar closed (show chat area), on desktop open
+  // 移动端默认设置：保持侧边栏关闭（显示聊天区域），桌面端则保持侧边栏打开
   sidebarOpen.value = !isMobile.value
   // global resize handlers
   window.addEventListener('mousemove', onResizeMove)
   window.addEventListener('mouseup', stopResize)
 })
-// cleanup
+// 清空全全局事件监听器
 onUnmounted(() => {
   window.removeEventListener('mousemove', onResizeMove)
   window.removeEventListener('mouseup', stopResize)
@@ -683,7 +683,7 @@ onUnmounted(() => {
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 200; /* higher than header title */
+  z-index: 200; 
   transform: translateX(0);
   transition: transform 0.25s ease;
 }
@@ -707,7 +707,7 @@ onUnmounted(() => {
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.06);
   overflow: hidden;
-  /* allow flex children with overflow:auto to shrink properly */
+  /* 全局调整大小处理程序，对具有overflow:auto属性的flex子元素进行适当收缩 */
   min-height: 0;
 }
 .chat-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; position: relative }
@@ -740,7 +740,7 @@ onUnmounted(() => {
   background: #fafafa;
   display: flex;
   flex-direction: column;
-  /* ensure internal scrolling works inside flex layout */
+  /* 全局调整大小处理程序，对具有overflow:auto属性的flex子元素进行适当收缩*/
   min-height: 0;
 }
 .messages { 
@@ -762,14 +762,21 @@ onUnmounted(() => {
 .message-image img { max-width: 560px; border-radius: 6px; display:block }
 .image-actions { margin-top: 6px }
 .chat-input { padding: 12px; border-top: 1px solid #f0f0f0; display:flex; gap:8px; align-items:center }
-/* keep input area visible at bottom even when page scrolls */
+
+/*聊天输入框，固定在底部 */
 .chat-input {
   position: sticky;
   bottom: 0;
   background: #fff;
   z-index: 12;
 }
-
+@media (max-width: 900px) {
+  .chat-input {
+    /* 核心：输入框固定在底部 TabBar (50px) 的上方 */
+    bottom: 50px; 
+    border-bottom: 1px solid #f0f0f0; /* 加个底边框 */
+  }
+}
 /* 添加顶部提示样式 */
 .header-actions {
   padding: 8px;
@@ -829,26 +836,21 @@ onUnmounted(() => {
 
 <style>
 #basicLayout .content > .ai-draw-page {
-  /* 1. 使用负 margin 代替 position: relative + top/left */
-  /* 这样不仅视觉上铺满，文档流中也会实际占据该空间，不会在底部留白 */
-  margin: -32px !important;
-  
-  /* 2. 宽度修正：抵消左右各 28px 的 padding */
+  margin: -28px !important;
   width: calc(100% + 56px) !important;
-
-  /* 3. 确保内部布局计算基准正确 */
   padding: 0 !important;
-  position: static !important; 
+  position: static !important;/* 覆盖掉之前的 relative */
   
-  /* 默认 PC 端逻辑：减去顶部 Header (56px) */
+  /* PC 端保持原样 */
   height: calc(100vh - 56px) !important;
 }
 
-/* 移动端特殊处理：减去 Header(56px) + TabBar(50px) */
+/* 移动端特殊处理 */
 @media (max-width: 900px) {
   #basicLayout .content > .ai-draw-page {
-    /* 56px + 50px = 106px */
-    height: calc(100vh - 106px) !important; 
+
+    height: calc(100vh - 56px) !important; /* 兼容不支持 dvh 的旧浏览器 */
+    height: calc(100dvh - 28px) !important; /* 核心修复：自动适应可视区域 */
   }
 }
 </style>
