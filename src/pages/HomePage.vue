@@ -99,10 +99,10 @@
       />
     </div>
     <div v-else>
-      <van-pull-refresh style="margin-left: -20px;margin-right: -20px" :style="activeTab === 'following' ? {marginTop: '-60px'}:{}" v-model="loading" @refresh="onRefresh" :distance="80" :head-height="60">
+      <van-pull-refresh style="margin-left: -20px;margin-right: -20px" :style="activeTab === 'following' ? {marginTop: '-60px'}:{}" v-model="refreshing" @refresh="onRefresh" :distance="80" :head-height="60">
         <div class="mobile-list-container">
           <!-- 修改关注页面空状态 -->
-          <div v-if="activeTab === 'following' && mobileDataList.length === 0 && !loading" class="empty-following">
+          <div v-if="activeTab === 'following' && mobileDataList.length === 0 && !loading && !refreshing" class="empty-following">
             <van-empty
               class="custom-empty"
               image="search"
@@ -120,10 +120,10 @@
           </div>
 
           <!-- 内部组件 -->
-          <MobilePictureList v-else :dataList="mobileDataList" :loading="loading" />
+          <MobilePictureList v-else :dataList="mobileDataList" :loading="loading || refreshing" />
 
           <!-- 加载状态提示 -->
-          <div v-if="!isEndOfData && !loading && mobileDataList.length > 0&&activeTab === 'all'"  class="loading-more">
+          <div v-if="!isEndOfData && loadingMore && mobileDataList.length > 0 && activeTab === 'all'" class="loading-more">
             <van-loading type="spinner" size="24px" color="#c4947e">加载中...</van-loading>
           </div>
           <div v-if="isEndOfData && mobileDataList.length > 0" class="no-more-data-tip">没有更多数据了哦~</div>
@@ -165,7 +165,9 @@ onMounted(async () => {
 // 定义PC端数据
 const pcDataList = ref<API.PictureVO[]>([])
 const total = ref(0)
-const loading = ref(true)
+const loading = ref(true) // 初始/PC 首次加载
+const refreshing = ref(false) // pull-refresh 专用
+const loadingMore = ref(false) // 滚动/分页加载专用
 const pcIsEndOfData = ref(false) // 新增 PC 端是否加载完所有数据的标记
 
 // 定义移动端数据
@@ -293,7 +295,10 @@ watch(activeTab, async (newTab, oldTab) => {
 }, { immediate: true })
 
 const fetchMobileData = async () => {
-  loading.value = true
+  // 只有在既不是下拉刷新也不是加载更多时，显示全局 loading
+  if (!refreshing.value && !loadingMore.value) {
+    loading.value = true
+  }
   try {
     const res = await listPictureVoByPageUsingPost(searchParams)
     if (res.data.code === 0 && res.data.data) {
@@ -304,11 +309,17 @@ const fetchMobileData = async () => {
         loaded: false,
       }))
       mobileDataList.value = [...mobileDataList.value, ...processedData]
+      // 如果没有更多数据，设置结束标记
+      isEndOfData.value = processedData.length === 0
     }
   } catch (error) {
     // console.error('获取数据失败:', error)
   } finally {
-    loading.value = false
+    if (!refreshing.value && !loadingMore.value) {
+      loading.value = false
+    }
+    // 如果是下拉刷新，确保刷新状态被复位
+    if (refreshing.value) refreshing.value = false
   }
 }
 
@@ -355,30 +366,32 @@ const doSearch = () => {
 }
 
 const isEndOfData = ref(false)
-const scroll = debounce(() => {
-  const isLoading = ref(true)
+const scroll = () => {
   const throttledFetchData = debounce(async () => {
-    if (isLoading.value) {
+    if (loadingMore.value || isEndOfData.value) return
+    loadingMore.value = true
+    try {
       page.value = page.value + 1
       searchParams.current = page.value
       let res = null
-      if(activeTab.value==='all'){
+      if (activeTab.value === 'all') {
         res = await listPictureVoByPageUsingPost(searchParams)
-      }
-      if(activeTab.value==='following'){
+      } else if (activeTab.value === 'following') {
         res = await getFollowPictureUsingPost(searchParams)
       }
-      if (res.data.code === 0 && res.data.data) {
+      if (res && res.data && res.data.code === 0) {
         const newData = res.data.data.records ?? []
         mobileDataList.value = [...mobileDataList.value, ...newData]
         isEndOfData.value = newData.length === 0
-        isLoading.value = true
       } else {
-        message.error('获取数据失败，' + res.data.message)
-        isLoading.value = false
+        if (res) message.error('获取数据失败，' + res.data.message)
       }
+    } catch (error) {
+      // console.error('滚动加载出错', error)
+    } finally {
+      loadingMore.value = false
     }
-  }, 1000) // 设置节流时间间隔为4000毫秒，即每4000毫秒内最多触发一次请求，可根据实际情况调整
+  }, 1000)
 
   window.onscroll = () => {
     const bottomOfWindow =
@@ -390,7 +403,7 @@ const scroll = debounce(() => {
       throttledFetchData()
     }
   }
-})
+}
 
 // 添加滚动位置记忆变量
 const scrollPosition = ref(0)
@@ -441,7 +454,7 @@ const selectedTagList = ref<boolean[]>([])
 
 // 下拉刷新处理函数
 const onRefresh = async () => {
-  loading.value = true;
+  refreshing.value = true;
   try {
     // 重置搜索参数
     searchParams.searchText = '';
@@ -486,7 +499,7 @@ const onRefresh = async () => {
     // console.error('刷新数据出错:', error);
     message.error('刷新失败，请稍后重试');
   } finally {
-    loading.value = false;
+    refreshing.value = false;
   }
 };
 
@@ -613,9 +626,9 @@ const handleCategoryChange = async (category: string) => {
 // 加载更多图片
 const loadMorePictures = async (nextPage: number) => {
   if (pcIsEndOfData.value) return false
-  if (loading.value) return false
+  if (loadingMore.value) return false
 
-  loading.value = true
+  loadingMore.value = true
   try {
     let res;
     // 根据当前标签页加载不同的数据
@@ -668,7 +681,7 @@ const loadMorePictures = async (nextPage: number) => {
     console.error('加载更多图片失败:', error)
     return false
   } finally {
-    loading.value = false
+    loadingMore.value = false
   }
 }
 

@@ -826,8 +826,7 @@ onUnmounted(() => {
 }
 </style>
 
-/* global override: when AiDrawPage is inside BasicLayout's content, remove extra padding
-   so the page fills the available area and avoids the top whitespace from BasicLayout */
+
 <style>
 #basicLayout .content > .ai-draw-page {
   /* 1. 使用负 margin 代替 position: relative + top/left */
@@ -836,13 +835,20 @@ onUnmounted(() => {
   
   /* 2. 宽度修正：抵消左右各 28px 的 padding */
   width: calc(100% + 56px) !important;
-  
-  /* 3. 强制固定高度，禁止外层滚动 */
-  /* 使用 height 而不是 min-height，确保刚好填满视口减去顶部导航栏的高度 */
-  height: calc(100vh - 56px) !important;
-  
-  /* 4. 确保内部布局计算基准正确 */
+
+  /* 3. 确保内部布局计算基准正确 */
   padding: 0 !important;
-  position: static !important; /* 覆盖掉之前的 relative */
+  position: static !important; 
+  
+  /* 默认 PC 端逻辑：减去顶部 Header (56px) */
+  height: calc(100vh - 56px) !important;
+}
+
+/* 移动端特殊处理：减去 Header(56px) + TabBar(50px) */
+@media (max-width: 900px) {
+  #basicLayout .content > .ai-draw-page {
+    /* 56px + 50px = 106px */
+    height: calc(100vh - 106px) !important; 
+  }
 }
 </style>
