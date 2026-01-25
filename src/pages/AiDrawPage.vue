@@ -534,14 +534,14 @@ function onChatScroll(e: Event) {
 async function handleGenerate() {
   if (!prompt.value) return
 
-  // capture prompt and clear input immediately so UI resets
+  // 捕获输入内容并立即清空输入框，以便 UI 重置
   const currentPrompt = prompt.value
   prompt.value = ''
 
-  // if there's no selected session, create one automatically
+  // 如果当前没有选中的会话，自动创建一个
   if (!currentSession.value) {
     await createNewSession()
-    // try to select first session if backend didn't explicitly return created id
+    // 如果后端没有显式返回创建的 ID，尝试选中第一个会话
     if (!currentSession.value && sessions.value.length > 0) {
       await selectSession(sessions.value[0])
     }
@@ -550,47 +550,57 @@ async function handleGenerate() {
       return
     }
   }
-  // optimistic: push user message immediately (right side)
+
+  // 乐观更新：立即在界面上添加用户消息（右侧）
   const userMsg: API.AiChatMessageVO = {
     role: 'user',
     content: currentPrompt,
     createTime: new Date().toLocaleString(),
   }
   messages.value.push(userMsg)
-  // insert assistant placeholder (left side)
+
+  // 插入 AI 回复的占位符（左侧）
   const placeholder: API.AiChatMessageVO = {
     role: 'assistant',
     content: '生成中...',
     createTime: new Date().toLocaleString(),
   }
+  // 获取占位符的索引，以便稍后替换
   const placeholderIndex = messages.value.push(placeholder) - 1
   pendingAssistantIndex.value = placeholderIndex
   generating.value = true
+
   try {
     const sessionId = Number(currentSession.value.id)
     const userId = String(loginUserStore.loginUser?.id || '')
     const body: API.GenerateImageRequest = { userId, prompt: currentPrompt }
+    
+    // 发起生成请求
     const res = await generateImage({ sessionId }, body)
+    
     if (res && res.data && res.data.code === 0 && res.data.data) {
       const data = res.data.data
       const newMsg: API.AiChatMessageVO = {
-        // prefer explicit role field added to AiGenerateImageVO, fallback to type
+        // 优先使用 AiGenerateImageVO 中显式添加的 role 字段，否则回退使用 type 或默认值
         role: (data as any).role || data.type || 'assistant',
         content: data.content || '',
         imageUrl: (data.cosUrl as any) || undefined,
         createTime: new Date().toLocaleString(),
       }
-      // replace placeholder
+      
+      // 替换占位符消息
       if (pendingAssistantIndex.value !== null && pendingAssistantIndex.value >= 0 && pendingAssistantIndex.value < messages.value.length) {
         messages.value.splice(pendingAssistantIndex.value, 1, newMsg)
         pendingAssistantIndex.value = null
       } else {
+        // 兜底：如果索引有问题，直接追加
         messages.value.push(newMsg)
       }
+      
       await nextTick()
       scrollToBottom()
     } else {
-      // on failure, replace placeholder content with error message
+      // 失败时，将占位符内容替换为错误提示
       if (pendingAssistantIndex.value !== null) {
         messages.value[pendingAssistantIndex.value].content = '生成失败，请重试。'
         pendingAssistantIndex.value = null
@@ -598,6 +608,7 @@ async function handleGenerate() {
       console.error('生成图片失败', res)
     }
   } catch (e) {
+    // 发生异常时，提示检查网络
     if (pendingAssistantIndex.value !== null) {
       messages.value[pendingAssistantIndex.value].content = '生成异常，请检查网络。'
       pendingAssistantIndex.value = null
@@ -696,6 +707,8 @@ onUnmounted(() => {
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.06);
   overflow: hidden;
+  /* allow flex children with overflow:auto to shrink properly */
+  min-height: 0;
 }
 .chat-header { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; display:flex; justify-content:space-between; align-items:center; position: relative }
 .chat-header-left { display:flex; align-items:center; gap:8px; z-index: 31 }
@@ -727,6 +740,8 @@ onUnmounted(() => {
   background: #fafafa;
   display: flex;
   flex-direction: column;
+  /* ensure internal scrolling works inside flex layout */
+  min-height: 0;
 }
 .messages { 
   display: flex;
@@ -742,10 +757,18 @@ onUnmounted(() => {
 .message-item.user { align-self: flex-end }
 .message-item.assistant { align-self: flex-start }
 .message-content { background: white; padding: 12px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.04) }
+.message-item.user .message-content { background: rgba(255, 142, 83, 0.1); }
 .message-text { white-space: pre-wrap }
 .message-image img { max-width: 560px; border-radius: 6px; display:block }
 .image-actions { margin-top: 6px }
 .chat-input { padding: 12px; border-top: 1px solid #f0f0f0; display:flex; gap:8px; align-items:center }
+/* keep input area visible at bottom even when page scrolls */
+.chat-input {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  z-index: 12;
+}
 
 /* 添加顶部提示样式 */
 .header-actions {
@@ -807,13 +830,19 @@ onUnmounted(() => {
    so the page fills the available area and avoids the top whitespace from BasicLayout */
 <style>
 #basicLayout .content > .ai-draw-page {
-  /* pull the page up/left to compensate the parent's 28px padding so it visually fills the area */
-  position: relative !important;
-  top: -28px !important;
-  left: -28px !important;
+  /* 1. 使用负 margin 代替 position: relative + top/left */
+  /* 这样不仅视觉上铺满，文档流中也会实际占据该空间，不会在底部留白 */
+  margin: -32px !important;
+  
+  /* 2. 宽度修正：抵消左右各 28px 的 padding */
   width: calc(100% + 56px) !important;
+  
+  /* 3. 强制固定高度，禁止外层滚动 */
+  /* 使用 height 而不是 min-height，确保刚好填满视口减去顶部导航栏的高度 */
+  height: calc(100vh - 56px) !important;
+  
+  /* 4. 确保内部布局计算基准正确 */
   padding: 0 !important;
-  margin: 0 !important;
-  min-height: calc(100vh - 56px) !important;
+  position: static !important; /* 覆盖掉之前的 relative */
 }
 </style>
