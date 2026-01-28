@@ -297,8 +297,9 @@ const device = ref<string>('')
 
 onMounted(async () => {
   device.value = await getDeviceType()
-  replyCommentId.value = ''
-  currPicture.value = props.dataList[0]
+  if (props.dataList && props.dataList.length > 0) {
+    currPicture.value = props.dataList[0]
+  }
 })
 
 interface Props {
@@ -520,10 +521,10 @@ const doClickPicture = (picture: API.PictureVO) => {
     return
   }
   
-  // 只有登录用户才增加浏览量
-  if (picture.viewCount !== undefined) {
-    picture.viewCount = normalizeNumber(picture.viewCount) + 1
-  }
+    // 只有登录用户才增加浏览量
+    const currentViewCount = normalizeNumber(picture.viewCount);
+    // 安全处理：确保计算结果也是赋值给数字类型
+    picture.viewCount = currentViewCount + 1;
   
   router.push({
     path: `/picture/${picture.id}`,
@@ -595,8 +596,16 @@ const doLike = async (picture: API.PictureVO, e: Event) => {
     router.push(`/user/login?redirect=${window.location.href}`)
     return
   }
-  const currentLikeStatus = picture.isLiked || 0
-  const newLikeStatus = currentLikeStatus === 1 ? 0 : 1
+  // 1. 记录原始状态（用于回滚）
+  const originalStatus = picture.isLiked;
+  const originalCount = normalizeNumber(picture.likeCount);
+  
+  // 2. 乐观更新：假设请求会成功，直接更新 UI
+  const newLikeStatus = originalStatus === 1 ? 0 : 1;
+  picture.isLiked = newLikeStatus;
+  picture.likeCount = newLikeStatus === 1 
+      ? originalCount + 1 
+      : Math.max(0, originalCount - 1);
   
   const requestBody: API.LikeRequest = {
     targetId: picture.id,
@@ -694,7 +703,8 @@ const performShare = async (picture: API.PictureVO) => {
     const res = await doShareUsingPost(requestBody)
     if (res.data.code === 0) {
       // 更新分享数
-      picture.shareCount++
+      picture.shareCount = normalizeNumber(picture.shareCount) + 1;
+  picture.isShared = 1;
       // 更新分享按钮颜色
       shareButtonColor.value[picture.id] = '#60c3d5'
       // 增加分享次数（本地记录）

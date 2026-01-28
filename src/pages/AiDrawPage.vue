@@ -683,7 +683,7 @@ onUnmounted(() => {
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 200; 
+  z-index: 3000; 
   transform: translateX(0);
   transition: transform 0.25s ease;
 }
@@ -772,11 +772,26 @@ onUnmounted(() => {
 }
 @media (max-width: 900px) {
   .chat-input {
-    /* 核心：输入框固定在底部 TabBar (50px) 的上方 */
-    bottom: 50px; 
-    border-bottom: 1px solid #f0f0f0; /* 加个底边框 */
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: calc(50px + env(safe-area-inset-bottom));
+    background: #fff;
+    z-index: 1000;
+
+    padding: 12px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    border-radius: 8px;
+  }
+
+  .chat-body {
+    padding-bottom: calc(50px + 72px);
   }
 }
+
 /* 添加顶部提示样式 */
 .header-actions {
   padding: 8px;
@@ -836,21 +851,12 @@ onUnmounted(() => {
 
 <style>
 #basicLayout .content > .ai-draw-page {
-  margin: -28px !important;
+  margin: -30px !important;
   width: calc(100% + 56px) !important;
   padding: 0 !important;
   position: static !important;/* 覆盖掉之前的 relative */
   
   /* PC 端保持原样 */
   height: calc(100vh - 56px) !important;
-}
-
-/* 移动端特殊处理 */
-@media (max-width: 900px) {
-  #basicLayout .content > .ai-draw-page {
-
-    height: calc(100vh - 56px) !important; /* 兼容不支持 dvh 的旧浏览器 */
-    height: calc(100dvh - 28px) !important; /* 核心修复：自动适应可视区域 */
-  }
 }
 </style>

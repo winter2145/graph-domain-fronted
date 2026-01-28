@@ -120,7 +120,9 @@
           </div>
 
           <!-- 内部组件 -->
-          <MobilePictureList v-else :dataList="mobileDataList" :loading="loading || refreshing" />
+          <MobilePictureList v-else :dataList="mobileDataList" 
+          :loading="loading || refreshing"
+           />
 
           <!-- 加载状态提示 -->
           <div v-if="!isEndOfData && loadingMore && mobileDataList.length > 0 && activeTab === 'all'" class="loading-more">
