@@ -61,15 +61,29 @@ const checkUserSpace = async () => {
         router.replace('/add_space')
         const key = `create-space-${Date.now()}`
 
+        let timer: number
+
         const closeMessage = () => {
           message.destroy(key)
           removeClickListener()
+          clearTimeout(timer)
         }
 
         const content = h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, [
           h('span', '请您创建个人空间'),
           h(Button, { type: 'link', onClick: closeMessage }, { default: () => '关闭' }),
         ])
+
+        message.open({
+          content,
+          key,
+          duration: 0, // 仍然不走 antd 自带自动关闭
+        })
+
+        // ⭐ 2 秒后自动关闭
+        timer = window.setTimeout(() => {
+          closeMessage()
+        }, 2000)
 
         message.open({
           content,

@@ -28,7 +28,9 @@
                   <a-button type="text" size="small" class="edit-session-btn" @click.stop="openEditSession(item)">
                     <EditOutlined />
                   </a-button>
-                  <a-popconfirm title="确认删除会话吗？" ok-text="删除" cancel-text="取消" @confirm="confirmDeleteSession(item)">
+                  <a-popconfirm title="确认删除会话吗？" ok-text="删除" cancel-text="取消"
+                  :zIndex="6000" 
+                  @confirm="confirmDeleteSession(item)">
                     <a-button type="text" size="small" class="delete-session-btn" @click.stop>
                       <DeleteOutlined />
                     </a-button>
@@ -190,9 +192,6 @@ const loadingMore = ref(false)
   // 添加是否在顶部的状态
   const isAtTop = ref(false)
 
-  // Normalize records: ensure returned array is chronological (oldest -> newest).
-  // Some APIs return pages in newest->oldest order; others already return
-  // oldest->newest. We detect by comparing first/last createTime and reverse
   // when necessary.
   function normalizeRecords(records: any[]) {
     if (!records || records.length < 2) return records.slice()
@@ -206,8 +205,7 @@ const loadingMore = ref(false)
         return 0
       }
     }
-    // sort by time asc; if same time, prefer role ordering (user before assistant),
-    // otherwise preserve original index to keep stable ordering.
+
     return records
       .map((r, i) => ({ r, i, t: toMillis(r.createTime), role: String(r.role || '') }))
       .sort((a, b) => {
@@ -323,7 +321,7 @@ async function loadSessions() {
       sessions.value = res.data.data || []
       // select the first session by default
       if (!currentSession.value && sessions.value.length > 0) {
-        selectSession(sessions.value[0])
+        selectSession(sessions.value[0], false)
       }
     }
   } catch (e) {
@@ -345,7 +343,7 @@ async function createNewSession() {
       const createdId = res.data.data
       if (createdId) {
         const found = sessions.value.find(s => String(s.id) === String(createdId))
-        if (found) selectSession(found)
+        if (found) await selectSession(found, false)
       }
     }
   } catch (e) {
@@ -353,11 +351,13 @@ async function createNewSession() {
   }
 }
 
-async function selectSession(session: API.AiChatSessionVO) {
-  // detach previous scroll listener (if any) before switching
+async function selectSession(session: API.AiChatSessionVO, clear = true) {
+
   detachChatScrollListener()
   currentSession.value = session
-  await loadMessages(session.id || 0)
+  if (clear) {
+    await loadMessages(session.id || 0)
+  }
   if (isMobile.value) {
     sidebarOpen.value = false
   }
@@ -534,22 +534,22 @@ function onChatScroll(e: Event) {
 async function handleGenerate() {
   if (!prompt.value) return
 
-  // 捕获输入内容并立即清空输入框，以便 UI 重置
-  const currentPrompt = prompt.value
-  prompt.value = ''
-
   // 如果当前没有选中的会话，自动创建一个
   if (!currentSession.value) {
     await createNewSession()
     // 如果后端没有显式返回创建的 ID，尝试选中第一个会话
     if (!currentSession.value && sessions.value.length > 0) {
-      await selectSession(sessions.value[0])
+      await selectSession(sessions.value[0], false)
     }
     if (!currentSession.value) {
       message.error('无法创建会话，请稍后重试')
       return
     }
   }
+
+  // 捕获输入内容并立即清空输入框，以便 UI 重置
+  const currentPrompt = prompt.value
+  prompt.value = ''
 
   // 乐观更新：立即在界面上添加用户消息（右侧）
   const userMsg: API.AiChatMessageVO = {
